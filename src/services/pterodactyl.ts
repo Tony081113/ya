@@ -128,6 +128,29 @@ export class PterodactylService {
     }
   }
 
+  /** 取得指定節點中第一個未被使用的 Allocation，若無可用 Port 則拋出錯誤 */
+  async getFirstAvailableAllocation(nodeId: number): Promise<{ id: number; port: number }> {
+    try {
+      const response = await this.client.get(`/nodes/${nodeId}/allocations`);
+      const allocations: any[] = response.data.data;
+      const available = allocations.find((a: any) => a.attributes.assigned === false);
+
+      if (!available) {
+        throw new Error(`節點 ${nodeId} 已無可用的 Port，請選擇其他節點或釋放現有 Allocation。`);
+      }
+
+      return {
+        id: available.attributes.id,
+        port: available.attributes.port,
+      };
+    } catch (error: any) {
+      if (error.message?.includes('節點')) {
+        throw error;
+      }
+      throw new Error(`無法取得節點 ${nodeId} 的 Allocation：${error.message || error}`);
+    }
+  }
+
   async getNodeAllocations(nodeId: number): Promise<any[]> {
     try {
       const response = await this.client.get(`/nodes/${nodeId}/allocations`);
@@ -171,20 +194,27 @@ export class PterodactylService {
 
   async createServer(options: ServerCreationOptions & { user: number }): Promise<PterodactylServer> {
     try {
-      // Get the selected egg details for proper configuration
-      const eggs = await this.getEggs();
-      const selectedEgg = eggs.find(egg => egg.id === options.egg);
-      
-      if (!selectedEgg) {
-        throw new Error(`Egg with ID ${options.egg} not found`);
-      }      // Basic server creation payload according to Pterodactyl API
+      // 從環境變數讀取固定的 Nest / Egg 設定
+      const nestId = parseInt(process.env.PTERO_NEST_ID || '1', 10);
+      const eggId  = parseInt(process.env.PTERO_EGG_ID  || '1', 10);
+
+      // 1. 先取得該節點第一個可用的 Allocation（同時拿到 Port 號碼）
+      const allocation = await this.getFirstAvailableAllocation(options.nodeId);
+
+      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令）
+      const eggResponse = await this.client.get(
+        `/nests/${nestId}/eggs/${eggId}?include=variables`
+      );
+      const egg = eggResponse.data.attributes;
+
+      // 3. 組裝建立伺服器所需的 Payload
       const serverData = {
         name: options.name,
         description: options.description || '',
         user: options.user,
-        egg: options.egg,
-        docker_image: selectedEgg.docker_image || 'ghcr.io/pterodactyl/yolks:java_17',
-        startup: selectedEgg.startup || 'echo "Starting server..."',
+        egg: eggId,
+        docker_image: egg.docker_image || 'ghcr.io/pterodactyl/yolks:python_3_11',
+        startup: egg.startup || 'pip install -r requirements.txt && python bot.py',
         limits: {
           memory: options.memory,
           swap: 0,
@@ -197,64 +227,64 @@ export class PterodactylService {
           backups: 1,
           allocations: 1,
         },
-        deploy: {
-          locations: [options.location || 1],
-          dedicated_ip: false,
-          port_range: [],
+        // 使用指定的 Allocation 而非由面板自動分配
+        allocation: {
+          default: allocation.id,
         },
         environment: {
-          // Use egg's default environment variables if they exist
-          ...(selectedEgg.environment || {}),
-          
-          // Smart defaults for eggs with {{STARTUP_CMD}} placeholder
-          ...(selectedEgg.startup?.includes('{{STARTUP_CMD}}') && {
-            STARTUP_CMD: this.getSmartStartupCommand(selectedEgg)
-          }),
-          
-          // Add Paper-specific variables
-          ...(selectedEgg.name?.toLowerCase().includes('paper') && {
-            SERVER_JARFILE: 'server.jar',
-            BUILD_NUMBER: 'latest'
-          }),
-          
-          // Add Minecraft-specific variables
-          ...(selectedEgg.nest_name?.toLowerCase().includes('minecraft') && !selectedEgg.name?.toLowerCase().includes('paper') && {
-            SERVER_JARFILE: 'server.jar'
-          })
-        }
-      };      const response = await this.client.post('/servers', serverData);
+          // Python 固定設定
+          STARTUP_CMD: 'pip install -r requirements.txt',
+          SECOND_CMD: 'python bot.py',
+          QUERY_PORT: allocation.port.toString(),
+          // 常見選填欄位，避免 422 錯誤
+          SERVER_VERSION: 'latest',
+          QUERY_PROTOCOLS: 'tcp',
+        },
+      };
+
+      const response = await this.client.post('/servers', serverData);
       return response.data.attributes;
     } catch (error: any) {
-      console.error('Server creation failed:', {
+      // 若是我們自己拋出的業務錯誤（如無可用 Port），直接向上傳遞
+      if (!error.response) {
+        throw error;
+      }
+
+      console.error('建立伺服器失敗：', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
       });
 
       if (error.response?.status === 422) {
         const validationErrors = error.response?.data?.errors;
-        
+
         if (validationErrors) {
           if (Array.isArray(validationErrors)) {
-            const errorMessages = validationErrors.map((err, index) => {
-              if (typeof err === 'object' && err.detail) {
-                return err.detail;
-              }
-              return `Error ${index + 1}: ${JSON.stringify(err)}`;
-            }).join('; ');
-            throw new Error(`Validation failed: ${errorMessages}`);
+            const errorMessages = validationErrors
+              .map((err: any, index: number) => {
+                if (typeof err === 'object' && err.detail) {
+                  return err.detail;
+                }
+                return `錯誤 ${index + 1}：${JSON.stringify(err)}`;
+              })
+              .join('；');
+            throw new Error(`資料驗證失敗：${errorMessages}`);
           } else {
             const errorMessages = Object.entries(validationErrors)
-              .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-              .join('; ');
-            throw new Error(`Validation failed: ${errorMessages}`);
+              .map(
+                ([field, messages]: [string, any]) =>
+                  `${field}：${Array.isArray(messages) ? messages.join('、') : messages}`
+              )
+              .join('；');
+            throw new Error(`資料驗證失敗：${errorMessages}`);
           }
         }
-        throw new Error('Server creation failed: Invalid data provided');
+        throw new Error('建立伺服器失敗：提供的資料無效');
       }
-      
-      throw new Error(`Failed to create server: ${error.response?.statusText || error.message}`);
+
+      throw new Error(`建立伺服器失敗：${error.response?.statusText || error.message}`);
     }
   }
 

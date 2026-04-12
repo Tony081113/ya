@@ -39,10 +39,8 @@ export interface ServerCreationOptions {
   memory: number;
   disk: number;
   cpu: number;
-  egg: number;
-  location?: number;
-  allocation?: number;
-  startupCommand?: string;
+  /** 要部署的節點 ID（Allocation 與 Egg 設定由系統自動決定） */
+  nodeId: number;
 }
 
 export interface CommandContext {
