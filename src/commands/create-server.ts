@@ -8,6 +8,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('create-server')
@@ -169,7 +170,11 @@ export async function execute(
       `使用者 ${interaction.user.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}`
     );
   } catch (error) {
-    Logger.error('create-server 指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('create-server 指令使用者錯誤：', error);
+    } else {
+      Logger.error('create-server 指令發生錯誤：', error);
+    }
 
     let title        = '❌ 發生錯誤';
     let errorMessage = '建立伺服器時發生錯誤，請稍後再試。';
@@ -319,7 +324,11 @@ export async function executePrefix(
       `使用者 ${message.author.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}`
     );
   } catch (error) {
-    Logger.error('create-server 前綴指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('create-server 前綴指令使用者錯誤：', error);
+    } else {
+      Logger.error('create-server 前綴指令發生錯誤：', error);
+    }
 
     let title        = '❌ 發生錯誤';
     let errorMessage = '建立伺服器時發生錯誤，請稍後再試。';

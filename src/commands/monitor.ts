@@ -10,6 +10,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('monitor')
@@ -42,7 +43,11 @@ export async function execute(
     }
 
   } catch (error) {
-    Logger.error('Error in monitor command:', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in monitor command:', error);
+    } else {
+      Logger.error('Error in monitor command:', error);
+    }
     
     let errorMessage = 'An error occurred while monitoring server resources.';
     let title = '❌ Error';
@@ -343,7 +348,11 @@ export async function executePrefix(
     await executePrefixMonitoring(message, serverId, context, pterodactylService);
 
   } catch (error) {
-    Logger.error('Error in monitor command (prefix):', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in monitor command (prefix):', error);
+    } else {
+      Logger.error('Error in monitor command (prefix):', error);
+    }
     
     const errorMessage = error instanceof Error ? error.message : 'An error occurred while monitoring server resources.';
     const embed = new EmbedBuilder()

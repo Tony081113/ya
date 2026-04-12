@@ -11,6 +11,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('servers')
@@ -46,7 +47,11 @@ export async function execute(
     }    // Show servers with pagination
     await showServersWithPagination(interaction, servers, 0);
   } catch (error) {
-    Logger.error('Error in servers command:', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in servers command:', error);
+    } else {
+      Logger.error('Error in servers command:', error);
+    }
     
     let errorMessage = 'An error occurred while fetching your servers.';
     let title = '❌ Error';
@@ -113,7 +118,11 @@ export async function executePrefix(
     }    // Show servers with pagination
     await showServersWithPagination(message, servers, 0);
   } catch (error) {
-    Logger.error('Error in servers command (prefix):', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in servers command (prefix):', error);
+    } else {
+      Logger.error('Error in servers command (prefix):', error);
+    }
     
     let errorMessage = 'An error occurred while fetching your servers.';
     let title = '❌ Error';

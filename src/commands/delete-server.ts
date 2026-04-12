@@ -12,6 +12,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('delete-server')
@@ -67,7 +68,11 @@ export async function execute(
       // Show server selection (only user's servers)
       await showServerSelection(interaction, context, pterodactylService, authService);
     }  } catch (error) {
-    Logger.error('Error in delete-server command:', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in delete-server command:', error);
+    } else {
+      Logger.error('Error in delete-server command:', error);
+    }
     
     let errorMessage = 'An error occurred while deleting the server.';
     let title = '❌ Error';
@@ -527,7 +532,11 @@ export async function executePrefix(
       return;
     }
 
-    Logger.error('Error in delete-server command (prefix):', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in delete-server command (prefix):', error);
+    } else {
+      Logger.error('Error in delete-server command (prefix):', error);
+    }
     
     const errorMessage = error instanceof Error ? error.message : 'An error occurred while deleting the server.';
     const embed = new EmbedBuilder()
