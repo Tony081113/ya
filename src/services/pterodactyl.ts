@@ -369,6 +369,24 @@ export class PterodactylService {
     }
   }
 
+  async createAllocation(nodeId: number, ip: string, ports: string[]): Promise<void> {
+    try {
+      await this.client.post(`/nodes/${nodeId}/allocations`, { ip, ports });
+    } catch (error: any) {
+      const detail = error.response?.data?.errors?.[0]?.detail || error.response?.statusText || error.message;
+      throw new Error(`建立配置失敗：${detail}`);
+    }
+  }
+
+  async deleteAllocation(nodeId: number, allocationId: number): Promise<void> {
+    try {
+      await this.client.delete(`/nodes/${nodeId}/allocations/${allocationId}`);
+    } catch (error: any) {
+      const detail = error.response?.data?.errors?.[0]?.detail || error.response?.statusText || error.message;
+      throw new Error(`刪除配置失敗：${detail}`);
+    }
+  }
+
   async getAllServers(): Promise<any[]> {
     try {
       const response = await this.client.get('/servers');
