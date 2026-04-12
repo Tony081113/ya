@@ -146,14 +146,15 @@ export class PterodactylService {
       
       const allEggs: any[] = [];
       
-      // Get eggs from each nest
+      // Get eggs from each nest, including their variable definitions
       for (const nest of nests) {
         try {
-          const eggsResponse = await this.client.get(`/nests/${nest.attributes.id}/eggs`);
+          const eggsResponse = await this.client.get(`/nests/${nest.attributes.id}/eggs?include=variables`);
           const eggs = eggsResponse.data.data.map((egg: any) => ({
             ...egg.attributes,
             nest_name: nest.attributes.name,
-            nest_id: nest.attributes.id
+            nest_id: nest.attributes.id,
+            variables: egg.attributes?.relationships?.variables?.data?.map((v: any) => v.attributes) || []
           }));
           allEggs.push(...eggs);
         } catch (error) {
@@ -177,7 +178,19 @@ export class PterodactylService {
       
       if (!selectedEgg) {
         throw new Error(`Egg with ID ${options.egg} not found`);
-      }      // Basic server creation payload according to Pterodactyl API
+      }
+
+      // Build environment from egg variable defaults
+      const eggEnvDefaults: Record<string, string> = {};
+      if (Array.isArray(selectedEgg.variables)) {
+        for (const variable of selectedEgg.variables) {
+          if (variable.env_variable) {
+            eggEnvDefaults[variable.env_variable] = variable.default_value ?? '';
+          }
+        }
+      }
+
+      // Basic server creation payload according to Pterodactyl API
       const serverData = {
         name: options.name,
         description: options.description || '',
@@ -203,8 +216,8 @@ export class PterodactylService {
           port_range: [],
         },
         environment: {
-          // Use egg's default environment variables if they exist
-          ...(selectedEgg.environment || {}),
+          // Use egg's variable defaults as the base
+          ...eggEnvDefaults,
           
           // Smart defaults for eggs with {{STARTUP_CMD}} placeholder
           ...(selectedEgg.startup?.includes('{{STARTUP_CMD}}') && {
