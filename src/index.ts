@@ -7,6 +7,7 @@ import {
   Routes,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  AutocompleteInteraction,
   ComponentType,
   ActivityType
 } from 'discord.js';
@@ -26,6 +27,7 @@ interface Command {
   data: any;
   execute: (interaction: ChatInputCommandInteraction, ...args: any[]) => Promise<void>;
   executePrefix?: (message: any, args: string[], authService: any, pterodactylService: any) => Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction, ...args: any[]) => Promise<void>;
 }
 
 class PterodactylBot {  private client: Client;
@@ -116,6 +118,8 @@ class PterodactylBot {  private client: Client;
     this.client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.isChatInputCommand()) {
         await this.handleSlashCommand(interaction);
+      } else if (interaction.isAutocomplete()) {
+        await this.handleAutocomplete(interaction);
       } else if (interaction.isButton()) {
         await this.handleButtonInteraction(interaction);
       }
@@ -157,6 +161,20 @@ class PterodactylBot {  private client: Client;
       } else {
         await interaction.reply(errorMessage);
       }
+    }
+  }
+
+  private async handleAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
+    const command = this.commands.get(interaction.commandName);
+
+    if (!command || !command.autocomplete) {
+      return;
+    }
+
+    try {
+      await command.autocomplete(interaction, this.pterodactylService);
+    } catch (error) {
+      Logger.error(`Error handling autocomplete for ${interaction.commandName}:`, error);
     }
   }
   private async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
