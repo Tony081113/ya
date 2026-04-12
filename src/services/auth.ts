@@ -53,7 +53,7 @@ export class AuthService {
   async requireAuth(user: User, member?: GuildMember): Promise<CommandContext> {
     const context = await this.createCommandContext(user, member);
     if (!context) {
-      throw new Error('You must bind your account first! Use `/bind` command.');
+      throw new Error('你必須先綁定帳號！請使用 `/bind` 指令。');
     }
     return context;
   }
@@ -61,7 +61,7 @@ export class AuthService {
   async requireAdmin(user: User, member: GuildMember): Promise<CommandContext> {
     const context = await this.requireAuth(user, member);
     if (!context.isAdmin) {
-      throw new Error('You must be an administrator to use this command.');
+      throw new Error('你必須是管理員才能使用此指令。');
     }
     return context;
   }

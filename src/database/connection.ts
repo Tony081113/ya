@@ -41,14 +41,14 @@ export class DatabaseConnection {
     return stmt.get(discordId);
   }
 
-  // Check if a Pterodactyl user is already bound to any Discord account
+  // 檢查某個 Pterodactyl 使用者是否已綁定至任何 Discord 帳號
   getPterodactylUserBinding(pterodactylUserId: number): any {
     const stmt = this.db.prepare('SELECT * FROM bound_users WHERE pterodactyl_user_id = ?');
     return stmt.get(pterodactylUserId);
   }unbindUser(discordId: string): void {
-    // Use a transaction to ensure both operations succeed or fail together
+    // 使用交易確保兩個操作同時成功或同時失敗
     const transaction = this.db.transaction((discordId: string) => {
-      // Delete dependent records first (user_servers), then the main record (bound_users)
+      // 先刪除相依記錄（user_servers），再刪除主記錄（bound_users）
       const stmt1 = this.db.prepare('DELETE FROM user_servers WHERE discord_id = ?');
       const stmt2 = this.db.prepare('DELETE FROM bound_users WHERE discord_id = ?');
       stmt1.run(discordId);
