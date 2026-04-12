@@ -14,25 +14,25 @@ import { Logger } from '../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('bind')
-  .setDescription('Bind your Discord account to your Pterodactyl account')
+  .setDescription('將您的 Discord 帳號綁定到您的 Pterodactyl 帳號')
   .addStringOption(option =>
     option.setName('method')
-      .setDescription('Binding method')
+      .setDescription('綁定方式')
       .setRequired(true)
       .addChoices(
-        { name: 'API Key Only (Recommended)', value: 'api_key' },
-        { name: 'Email + API Key', value: 'email_api' },
-        { name: 'Username + API Key', value: 'username_api' }
+        { name: 'API 金鑰（推薦）', value: 'api_key' },
+        { name: '電子郵件 + API 金鑰', value: 'email_api' },
+        { name: '使用者名稱 + API 金鑰', value: 'username_api' }
       )
   )
   .addStringOption(option =>
     option.setName('api_key')
-      .setDescription('Your Pterodactyl client API key')
+      .setDescription('您的 Pterodactyl 客戶端 API 金鑰')
       .setRequired(true)
   )
   .addStringOption(option =>
     option.setName('identifier')
-      .setDescription('Your email or username (only needed for email/username methods)')
+      .setDescription('您的電子郵件或使用者名稱（僅在使用電子郵件/使用者名稱方式時需要）')
       .setRequired(false)
   );
 
@@ -44,28 +44,28 @@ export async function execute(
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    // Check if user is already bound
+    // 檢查使用者是否已綁定
     const isAlreadyBound = await authService.isUserBound(interaction.user.id);
     if (isAlreadyBound) {
       const currentUser = await authService.getBoundUser(interaction.user.id);
       const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Already Bound')
-        .setDescription('Your Discord account is already bound to a Pterodactyl account!')
+        .setTitle('⚠️ 帳號已綁定')
+        .setDescription('您的 Discord 帳號已綁定到 Pterodactyl 帳號！')
         .addFields(
           { 
-            name: '📋 Current Binding', 
-            value: `**User ID:** ${currentUser?.pterodactyl_user_id}\n**API Key:** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
+            name: '📋 目前綁定資訊', 
+            value: `**使用者 ID：** ${currentUser?.pterodactyl_user_id}\n**API 金鑰：** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
             inline: false 
           },
           {
-            name: '🔄 To Bind a Different Account',
-            value: 'You must first unbind your current account using `/unbind`, then use `/bind` again with your new credentials.',
+            name: '🔄 綁定其他帳號',
+            value: '您必須先使用 `/unbind` 解除目前帳號的綁定，再使用 `/bind` 以新的憑證重新綁定。',
             inline: false
           },
           {
-            name: '📊 Check Current Status',
-            value: 'Use `/status` to see your current binding information.',
+            name: '📊 查看目前狀態',
+            value: '使用 `/status` 查看您目前的綁定資訊。',
             inline: false
           }
         )
@@ -79,22 +79,22 @@ export async function execute(
     const apiKey = interaction.options.getString('api_key', true);
     const identifier = interaction.options.getString('identifier');
 
-    // Verify the API key works and get user info
+    // 驗證 API 金鑰是否有效並取得使用者資訊
     pterodactylService.setUserApiKey(apiKey);
     
     let userInfo;
     try {
-      // Try to get user info from the client API
+      // 嘗試從客戶端 API 取得使用者資訊
       userInfo = await pterodactylService.getClientUserInfo();
     } catch (error) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Invalid API Key')
-        .setDescription('The provided API key is invalid or expired. Please check your API key and try again.')
+        .setTitle('❌ 無效的 API 金鑰')
+        .setDescription('提供的 API 金鑰無效或已過期，請檢查您的 API 金鑰後再試一次。')
         .addFields(
           { 
-            name: 'How to get your API key:', 
-            value: '1. Go to your Pterodactyl panel\n2. Click on your account (top right)\n3. Go to "API Credentials"\n4. Create a new API key\n5. Copy the key and use it here',
+            name: '如何取得您的 API 金鑰：', 
+            value: '1. 前往您的 Pterodactyl 面板\n2. 點擊您的帳號（右上角）\n3. 前往「API 憑證」\n4. 建立新的 API 金鑰\n5. 複製金鑰並在此使用',
             inline: false 
           }
         )
@@ -108,7 +108,7 @@ export async function execute(
 
     switch (method) {
       case 'api_key':
-        // Use the user info from the API key (most reliable method)
+        // 使用 API 金鑰取得的使用者資訊（最可靠的方法）
         pterodactylUserId = userInfo.id;
         break;
 
@@ -116,23 +116,23 @@ export async function execute(
         if (!identifier) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Missing Email')
-            .setDescription('Email is required when using the email + API key method.')
+            .setTitle('❌ 缺少電子郵件')
+            .setDescription('使用電子郵件 + API 金鑰方式時，必須提供電子郵件。')
             .setTimestamp();
 
           await interaction.editReply({ embeds: [embed] });
           return;
         }
 
-        // Verify email matches the API key user
+        // 驗證電子郵件是否與 API 金鑰擁有者相符
         if (userInfo.email.toLowerCase() !== identifier.toLowerCase()) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Email Mismatch')
-            .setDescription('The provided email does not match the API key owner.')
+            .setTitle('❌ 電子郵件不符')
+            .setDescription('提供的電子郵件與 API 金鑰擁有者不符。')
             .addFields(
-              { name: 'Expected Email', value: userInfo.email, inline: true },
-              { name: 'Provided Email', value: identifier, inline: true }
+              { name: '預期電子郵件', value: userInfo.email, inline: true },
+              { name: '提供的電子郵件', value: identifier, inline: true }
             )
             .setTimestamp();
 
@@ -146,23 +146,23 @@ export async function execute(
         if (!identifier) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Missing Username')
-            .setDescription('Username is required when using the username + API key method.')
+            .setTitle('❌ 缺少使用者名稱')
+            .setDescription('使用使用者名稱 + API 金鑰方式時，必須提供使用者名稱。')
             .setTimestamp();
 
           await interaction.editReply({ embeds: [embed] });
           return;
         }
 
-        // Verify username matches the API key user
+        // 驗證使用者名稱是否與 API 金鑰擁有者相符
         if (userInfo.username.toLowerCase() !== identifier.toLowerCase()) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Username Mismatch')
-            .setDescription('The provided username does not match the API key owner.')
+            .setTitle('❌ 使用者名稱不符')
+            .setDescription('提供的使用者名稱與 API 金鑰擁有者不符。')
             .addFields(
-              { name: 'Expected Username', value: userInfo.username, inline: true },
-              { name: 'Provided Username', value: identifier, inline: true }
+              { name: '預期使用者名稱', value: userInfo.username, inline: true },
+              { name: '提供的使用者名稱', value: identifier, inline: true }
             )
             .setTimestamp();
 
@@ -172,30 +172,30 @@ export async function execute(
         break;
 
       default:
-        throw new Error('Invalid binding method');
+        throw new Error('無效的綁定方式');
     }
 
-    // Check if this Pterodactyl account is already bound to another Discord account
+    // 檢查此 Pterodactyl 帳號是否已綁定到其他 Discord 帳號
     const pterodactylBinding = await authService.isPterodactylUserBound(pterodactylUserId);
     if (pterodactylBinding.isBound) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Pterodactyl Account Already Bound')
-        .setDescription('This Pterodactyl account is already bound to another Discord account!')
+        .setTitle('❌ Pterodactyl 帳號已被綁定')
+        .setDescription('此 Pterodactyl 帳號已被綁定到其他 Discord 帳號！')
         .addFields(
           { 
-            name: '🔗 Current Binding', 
-            value: `**Pterodactyl User ID:** ${pterodactylUserId}\n**Bound to Discord ID:** \`${pterodactylBinding.discordId}\``, 
+            name: '🔗 目前綁定資訊', 
+            value: `**Pterodactyl 使用者 ID：** ${pterodactylUserId}\n**已綁定的 Discord ID：** \`${pterodactylBinding.discordId}\``, 
             inline: false 
           },
           {
-            name: '💡 What you can do:',
-            value: '• If this is your account on another Discord, unbind it first\n• If this is not your account, you may be using the wrong API key\n• Contact an administrator if you believe this is an error',
+            name: '💡 您可以採取的行動：',
+            value: '• 若此為您在其他 Discord 上的帳號，請先解除綁定\n• 若此非您的帳號，您可能使用了錯誤的 API 金鑰\n• 若您認為這是錯誤，請聯繫管理員',
             inline: false
           },
           {
-            name: '🔑 Security Note',
-            value: 'Each Pterodactyl account can only be bound to one Discord account at a time for security purposes.',
+            name: '🔑 安全提示',
+            value: '基於安全考量，每個 Pterodactyl 帳號一次只能綁定一個 Discord 帳號。',
             inline: false
           }
         )
@@ -205,32 +205,32 @@ export async function execute(
       return;
     }
 
-    // Bind the user
+    // 綁定使用者
     await authService.bindUser(interaction.user.id, pterodactylUserId, apiKey);
 
     const embed = new EmbedBuilder()
       .setColor('Green')
-      .setTitle('✅ Account Bound Successfully')
-      .setDescription(`Your Discord account has been successfully bound to your Pterodactyl account!`)
+      .setTitle('✅ 帳號綁定成功')
+      .setDescription(`您的 Discord 帳號已成功綁定到您的 Pterodactyl 帳號！`)
       .addFields(
-        { name: '👤 Pterodactyl User', value: userInfo.username, inline: true },
-        { name: '📧 Email', value: userInfo.email, inline: true },
-        { name: '🆔 User ID', value: pterodactylUserId.toString(), inline: true },
-        { name: '🎯 Binding Method', value: method === 'api_key' ? 'API Key Only' : method === 'email_api' ? 'Email + API Key' : 'Username + API Key', inline: true },
-        { name: '🎮 Available Commands', value: '`/servers` - View your servers\n`/create-server` - Create a new server\n`/status` - Check binding status', inline: false }
+        { name: '👤 Pterodactyl 使用者', value: userInfo.username, inline: true },
+        { name: '📧 電子郵件', value: userInfo.email, inline: true },
+        { name: '🆔 使用者 ID', value: pterodactylUserId.toString(), inline: true },
+        { name: '🎯 綁定方式', value: method === 'api_key' ? '僅 API 金鑰' : method === 'email_api' ? '電子郵件 + API 金鑰' : '使用者名稱 + API 金鑰', inline: true },
+        { name: '🎮 可用指令', value: '`/servers` - 查看您的伺服器\n`/create-server` - 建立新伺服器\n`/status` - 查看綁定狀態', inline: false }
       )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
-    Logger.info(`User ${interaction.user.tag} bound their account to Pterodactyl user ${userInfo.username} (${pterodactylUserId})`);
+    Logger.info(`使用者 ${interaction.user.tag} 已將帳號綁定至 Pterodactyl 使用者 ${userInfo.username} (${pterodactylUserId})`);
 
   } catch (error) {
-    Logger.error('Error in bind command:', error);
+    Logger.error('bind 指令發生錯誤：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while binding your account. Please try again later.')
+      .setTitle('❌ 錯誤')
+      .setDescription('綁定帳號時發生錯誤，請稍後再試。')
       .setTimestamp();
 
     if (interaction.deferred) {
@@ -248,28 +248,28 @@ export async function executePrefix(
   pterodactylService: PterodactylService
 ) {
   try {
-    // Check if user is already bound
+    // 檢查使用者是否已綁定
     const isAlreadyBound = await authService.isUserBound(message.author.id);
     if (isAlreadyBound) {
       const currentUser = await authService.getBoundUser(message.author.id);
       const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Already Bound')
-        .setDescription('Your Discord account is already bound to a Pterodactyl account!')
+        .setTitle('⚠️ 帳號已綁定')
+        .setDescription('您的 Discord 帳號已綁定到 Pterodactyl 帳號！')
         .addFields(
           { 
-            name: '📋 Current Binding', 
-            value: `**User ID:** ${currentUser?.pterodactyl_user_id}\n**API Key:** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
+            name: '📋 目前綁定資訊', 
+            value: `**使用者 ID：** ${currentUser?.pterodactyl_user_id}\n**API 金鑰：** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
             inline: false 
           },
           {
-            name: '🔄 To Bind a Different Account',
-            value: 'You must first unbind your current account using `!unbind`, then use `!bind` again with your new credentials.',
+            name: '🔄 綁定其他帳號',
+            value: '您必須先使用 `!unbind` 解除目前帳號的綁定，再使用 `!bind` 以新的憑證重新綁定。',
             inline: false
           },
           {
-            name: '📊 Check Current Status',
-            value: 'Use `!status` to see your current binding information.',
+            name: '📊 查看目前狀態',
+            value: '使用 `!status` 查看您目前的綁定資訊。',
             inline: false
           }
         )
@@ -284,22 +284,22 @@ export async function executePrefix(
     if (args.length < 1) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Invalid Usage')
-        .setDescription('You need to provide your Pterodactyl API key to bind your account.')
+        .setTitle('❌ 無效的用法')
+        .setDescription('您需要提供 Pterodactyl API 金鑰來綁定帳號。')
         .addFields(
           { 
-            name: 'Usage Options:', 
-            value: '• `!bind <api_key>` - Bind with API key only (recommended)\n• `!bind <api_key> email <your_email>` - Bind with email verification\n• `!bind <api_key> username <your_username>` - Bind with username verification',
+            name: '用法選項：', 
+            value: '• `!bind <api_key>` - 僅使用 API 金鑰綁定（推薦）\n• `!bind <api_key> email <your_email>` - 使用電子郵件驗證綁定\n• `!bind <api_key> username <your_username>` - 使用使用者名稱驗證綁定',
             inline: false 
           },
           { 
-            name: 'Example:', 
+            name: '範例：', 
             value: '`!bind ptlc_your_api_key_here`',
             inline: false 
           },
           {
-            name: 'How to get your API key:',
-            value: '1. Go to your Pterodactyl panel\n2. Click on your account (top right)\n3. Go to "API Credentials"\n4. Create a new API key\n5. Copy the key and use it here',
+            name: '如何取得您的 API 金鑰：',
+            value: '1. 前往您的 Pterodactyl 面板\n2. 點擊您的帳號（右上角）\n3. 前往「API 憑證」\n4. 建立新的 API 金鑰\n5. 複製金鑰並在此使用',
             inline: false
           }
         )
@@ -316,7 +316,7 @@ export async function executePrefix(
     let method = 'api_key';
     let identifier: string | undefined;
 
-    // Parse additional arguments for method and identifier
+    // 解析方法和識別符的額外引數
     if (args.length >= 3) {
       const methodArg = args[1].toLowerCase();
       if (methodArg === 'email') {
@@ -329,26 +329,26 @@ export async function executePrefix(
     }
 
     const reply = await message.reply({ 
-      content: '🔄 Binding account...',
+      content: '🔄 綁定帳號中...',
       allowedMentions: { repliedUser: false }
     });
 
-    // Verify the API key works and get user info
+    // 驗證 API 金鑰是否有效並取得使用者資訊
     pterodactylService.setUserApiKey(apiKey);
     
     let userInfo;
     try {
-      // Try to get user info from the client API
+      // 嘗試從客戶端 API 取得使用者資訊
       userInfo = await pterodactylService.getClientUserInfo();
     } catch (error) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Invalid API Key')
-        .setDescription('The provided API key is invalid or expired. Please check your API key and try again.')
+        .setTitle('❌ 無效的 API 金鑰')
+        .setDescription('提供的 API 金鑰無效或已過期，請檢查您的 API 金鑰後再試一次。')
         .addFields(
           { 
-            name: 'How to get your API key:', 
-            value: '1. Go to your Pterodactyl panel\n2. Click on your account (top right)\n3. Go to "API Credentials"\n4. Create a new API key\n5. Copy the key and use it here',
+            name: '如何取得您的 API 金鑰：', 
+            value: '1. 前往您的 Pterodactyl 面板\n2. 點擊您的帳號（右上角）\n3. 前往「API 憑證」\n4. 建立新的 API 金鑰\n5. 複製金鑰並在此使用',
             inline: false 
           }
         )
@@ -362,7 +362,7 @@ export async function executePrefix(
 
     switch (method) {
       case 'api_key':
-        // Use the user info from the API key (most reliable method)
+        // 使用 API 金鑰取得的使用者資訊（最可靠的方法）
         pterodactylUserId = userInfo.id;
         break;
 
@@ -370,23 +370,23 @@ export async function executePrefix(
         if (!identifier) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Missing Email')
-            .setDescription('Email is required when using the email + API key method.')
+            .setTitle('❌ 缺少電子郵件')
+            .setDescription('使用電子郵件 + API 金鑰方式時，必須提供電子郵件。')
             .setTimestamp();
 
           await reply.edit({ content: '', embeds: [embed] });
           return;
         }
 
-        // Verify email matches the API key user
+        // 驗證電子郵件是否與 API 金鑰擁有者相符
         if (userInfo.email.toLowerCase() !== identifier.toLowerCase()) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Email Mismatch')
-            .setDescription('The provided email does not match the API key owner.')
+            .setTitle('❌ 電子郵件不符')
+            .setDescription('提供的電子郵件與 API 金鑰擁有者不符。')
             .addFields(
-              { name: 'Expected Email', value: userInfo.email, inline: true },
-              { name: 'Provided Email', value: identifier, inline: true }
+              { name: '預期電子郵件', value: userInfo.email, inline: true },
+              { name: '提供的電子郵件', value: identifier, inline: true }
             )
             .setTimestamp();
 
@@ -400,23 +400,23 @@ export async function executePrefix(
         if (!identifier) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Missing Username')
-            .setDescription('Username is required when using the username + API key method.')
+            .setTitle('❌ 缺少使用者名稱')
+            .setDescription('使用使用者名稱 + API 金鑰方式時，必須提供使用者名稱。')
             .setTimestamp();
 
           await reply.edit({ content: '', embeds: [embed] });
           return;
         }
 
-        // Verify username matches the API key user
+        // 驗證使用者名稱是否與 API 金鑰擁有者相符
         if (userInfo.username.toLowerCase() !== identifier.toLowerCase()) {
           const embed = new EmbedBuilder()
             .setColor('Red')
-            .setTitle('❌ Username Mismatch')
-            .setDescription('The provided username does not match the API key owner.')
+            .setTitle('❌ 使用者名稱不符')
+            .setDescription('提供的使用者名稱與 API 金鑰擁有者不符。')
             .addFields(
-              { name: 'Expected Username', value: userInfo.username, inline: true },
-              { name: 'Provided Username', value: identifier, inline: true }
+              { name: '預期使用者名稱', value: userInfo.username, inline: true },
+              { name: '提供的使用者名稱', value: identifier, inline: true }
             )
             .setTimestamp();
 
@@ -426,30 +426,30 @@ export async function executePrefix(
         break;
 
       default:
-        throw new Error('Invalid binding method');
+        throw new Error('無效的綁定方式');
     }
 
-    // Check if this Pterodactyl account is already bound to another Discord account
+    // 檢查此 Pterodactyl 帳號是否已綁定到其他 Discord 帳號
     const pterodactylBinding = await authService.isPterodactylUserBound(pterodactylUserId);
     if (pterodactylBinding.isBound) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Pterodactyl Account Already Bound')
-        .setDescription('This Pterodactyl account is already bound to another Discord account!')
+        .setTitle('❌ Pterodactyl 帳號已被綁定')
+        .setDescription('此 Pterodactyl 帳號已被綁定到其他 Discord 帳號！')
         .addFields(
           { 
-            name: '🔗 Current Binding', 
-            value: `**Pterodactyl User ID:** ${pterodactylUserId}\n**Bound to Discord ID:** \`${pterodactylBinding.discordId}\``, 
+            name: '🔗 目前綁定資訊', 
+            value: `**Pterodactyl 使用者 ID：** ${pterodactylUserId}\n**已綁定的 Discord ID：** \`${pterodactylBinding.discordId}\``, 
             inline: false 
           },
           {
-            name: '💡 What you can do:',
-            value: '• If this is your account on another Discord, unbind it first\n• If this is not your account, you may be using the wrong API key\n• Contact an administrator if you believe this is an error',
+            name: '💡 您可以採取的行動：',
+            value: '• 若此為您在其他 Discord 上的帳號，請先解除綁定\n• 若此非您的帳號，您可能使用了錯誤的 API 金鑰\n• 若您認為這是錯誤，請聯繫管理員',
             inline: false
           },
           {
-            name: '🔑 Security Note',
-            value: 'Each Pterodactyl account can only be bound to one Discord account at a time for security purposes.',
+            name: '🔑 安全提示',
+            value: '基於安全考量，每個 Pterodactyl 帳號一次只能綁定一個 Discord 帳號。',
             inline: false
           }
         )
@@ -459,32 +459,32 @@ export async function executePrefix(
       return;
     }
 
-    // Bind the user
+    // 綁定使用者
     await authService.bindUser(message.author.id, pterodactylUserId, apiKey);
 
     const embed = new EmbedBuilder()
       .setColor('Green')
-      .setTitle('✅ Account Bound Successfully')
-      .setDescription(`Your Discord account has been successfully bound to your Pterodactyl account!`)
+      .setTitle('✅ 帳號綁定成功')
+      .setDescription(`您的 Discord 帳號已成功綁定到您的 Pterodactyl 帳號！`)
       .addFields(
-        { name: '👤 Pterodactyl User', value: userInfo.username, inline: true },
-        { name: '📧 Email', value: userInfo.email, inline: true },
-        { name: '🆔 User ID', value: pterodactylUserId.toString(), inline: true },
-        { name: '🎯 Binding Method', value: method === 'api_key' ? 'API Key Only' : method === 'email_api' ? 'Email + API Key' : 'Username + API Key', inline: true },
-        { name: '🎮 Available Commands', value: '`/servers` or `!servers` - View your servers\n`/create-server` or `!create-server` - Create a new server\n`/status` or `!status` - Check binding status', inline: false }
+        { name: '👤 Pterodactyl 使用者', value: userInfo.username, inline: true },
+        { name: '📧 電子郵件', value: userInfo.email, inline: true },
+        { name: '🆔 使用者 ID', value: pterodactylUserId.toString(), inline: true },
+        { name: '🎯 綁定方式', value: method === 'api_key' ? '僅 API 金鑰' : method === 'email_api' ? '電子郵件 + API 金鑰' : '使用者名稱 + API 金鑰', inline: true },
+        { name: '🎮 可用指令', value: '`/servers` 或 `!servers` - 查看您的伺服器\n`/create-server` 或 `!create-server` - 建立新伺服器\n`/status` 或 `!status` - 查看綁定狀態', inline: false }
       )
       .setTimestamp();
 
     await reply.edit({ content: '', embeds: [embed] });
-    Logger.info(`User ${message.author.tag} bound their account to Pterodactyl user ${userInfo.username} (${pterodactylUserId})`);
+    Logger.info(`使用者 ${message.author.tag} 已將帳號綁定至 Pterodactyl 使用者 ${userInfo.username} (${pterodactylUserId})`);
 
   } catch (error) {
-    Logger.error('Error in bind command:', error);
+    Logger.error('bind 指令發生錯誤：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while binding your account. Please try again later.')
+      .setTitle('❌ 錯誤')
+      .setDescription('綁定帳號時發生錯誤，請稍後再試。')
       .setTimestamp();
 
     await message.reply({ 

@@ -13,7 +13,7 @@ import { Logger } from '../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('unbind')
-  .setDescription('Unbind your Discord account from your Pterodactyl account');
+  .setDescription('解除您的 Discord 帳號與 Pterodactyl 帳號的綁定');
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -22,37 +22,37 @@ export async function execute(
   try {
     await interaction.deferReply({ ephemeral: true });
 
-    // Check if user is bound
+    // 檢查使用者是否已綁定
     const isbound = await authService.isUserBound(interaction.user.id);
     
     if (!isbound) {
       const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Not Bound')
-        .setDescription('Your Discord account is not currently bound to any Pterodactyl account.')
+        .setTitle('⚠️ 帳號未綁定')
+        .setDescription('您的 Discord 帳號目前未綁定到任何 Pterodactyl 帳號。')
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
       return;
     }
 
-    // Get current user info for confirmation
+    // 取得目前使用者資訊以供確認
     const currentUser = await authService.getBoundUser(interaction.user.id);
 
-    // Confirmation prompt
+    // 確認提示
     const confirmEmbed = new EmbedBuilder()
       .setColor('Orange')
-      .setTitle('⚠️ Confirm Account Unbinding')
-      .setDescription('Are you sure you want to unbind your Discord account from your Pterodactyl account?')
+      .setTitle('⚠️ 確認解除帳號綁定')
+      .setDescription('您確定要解除 Discord 帳號與 Pterodactyl 帳號的綁定嗎？')
       .addFields(
         { 
-          name: '📋 Current Binding', 
-          value: `**User ID:** ${currentUser?.pterodactyl_user_id}\n**API Key:** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
+          name: '📋 目前綁定資訊', 
+          value: `**使用者 ID：** ${currentUser?.pterodactyl_user_id}\n**API 金鑰：** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
           inline: false 
         },
         { 
-          name: '⚠️ What happens when you unbind:', 
-          value: '• You will lose access to all server management commands\n• You will need to use `/bind` again to regain access\n• Your servers will remain intact on the panel',
+          name: '⚠️ 解除綁定後的影響：', 
+          value: '• 您將失去所有伺服器管理指令的存取權\n• 您需要再次使用 `/bind` 才能重新取得存取權\n• 您的伺服器將保留在面板上',
           inline: false 
         }
       )
@@ -60,12 +60,12 @@ export async function execute(
 
     const confirmButton = new ButtonBuilder()
       .setCustomId('unbind_confirm')
-      .setLabel('✅ Yes, Unbind Account')
+      .setLabel('✅ 是的，解除綁定')
       .setStyle(ButtonStyle.Danger);
 
     const cancelButton = new ButtonBuilder()
       .setCustomId('unbind_cancel')
-      .setLabel('❌ Cancel')
+      .setLabel('❌ 取消')
       .setStyle(ButtonStyle.Secondary);
 
     const row = new ActionRowBuilder<ButtonBuilder>()
@@ -76,7 +76,7 @@ export async function execute(
       components: [row] 
     });
 
-    // Wait for button interaction
+    // 等待按鈕互動
     try {
       const buttonInteraction = await response.awaitMessageComponent({
         componentType: ComponentType.Button,
@@ -87,8 +87,8 @@ export async function execute(
       if (buttonInteraction.customId === 'unbind_cancel') {
         const cancelEmbed = new EmbedBuilder()
           .setColor('Grey')
-          .setTitle('❌ Unbinding Cancelled')
-          .setDescription('Account unbinding has been cancelled. Your account remains bound.')
+          .setTitle('❌ 已取消解除綁定')
+          .setDescription('已取消解除帳號綁定，您的帳號仍保持綁定狀態。')
           .setTimestamp();
 
         await buttonInteraction.update({ embeds: [cancelEmbed], components: [] });
@@ -96,43 +96,43 @@ export async function execute(
       }
 
       if (buttonInteraction.customId === 'unbind_confirm') {
-        // Proceed with unbinding
+        // 執行解除綁定
         await authService.unbindUser(interaction.user.id);
 
         const successEmbed = new EmbedBuilder()
           .setColor('Green')
-          .setTitle('✅ Account Unbound Successfully')
-          .setDescription('Your Discord account has been successfully unbound from your Pterodactyl account.')
+          .setTitle('✅ 帳號解除綁定成功')
+          .setDescription('您的 Discord 帳號已成功解除與 Pterodactyl 帳號的綁定。')
           .addFields(
             { 
-              name: 'What\'s Next?', 
-              value: 'You will need to use `/bind` again to access server management features.',
+              name: '接下來呢？', 
+              value: '您需要再次使用 `/bind` 才能存取伺服器管理功能。',
               inline: false 
             }
           )
           .setTimestamp();
 
         await buttonInteraction.update({ embeds: [successEmbed], components: [] });
-        Logger.info(`User ${interaction.user.tag} unbound their account`);
+        Logger.info(`使用者 ${interaction.user.tag} 已解除帳號綁定`);
       }
 
     } catch (error) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⏰ Confirmation Timeout')
-        .setDescription('Account unbinding cancelled due to timeout.')
+        .setTitle('⏰ 確認逾時')
+        .setDescription('由於逾時，已取消解除帳號綁定。')
         .setTimestamp();
 
       await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
     }
 
   } catch (error) {
-    Logger.error('Error in unbind command:', error);
+    Logger.error('unbind 指令發生錯誤：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while unbinding your account. Please try again later.')
+      .setTitle('❌ 錯誤')
+      .setDescription('解除帳號綁定時發生錯誤，請稍後再試。')
       .setTimestamp();
 
     if (interaction.deferred) {
@@ -149,14 +149,14 @@ export async function executePrefix(
   authService: AuthService
 ) {
   try {
-    // Check if user is bound
+    // 檢查使用者是否已綁定
     const isbound = await authService.isUserBound(message.author.id);
     
     if (!isbound) {
       const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Not Bound')
-        .setDescription('Your Discord account is not currently bound to any Pterodactyl account.')
+        .setTitle('⚠️ 帳號未綁定')
+        .setDescription('您的 Discord 帳號目前未綁定到任何 Pterodactyl 帳號。')
         .setTimestamp();
 
       await message.reply({ 
@@ -166,23 +166,23 @@ export async function executePrefix(
       return;
     }
 
-    // Get current user info for confirmation
+    // 取得目前使用者資訊以供確認
     const currentUser = await authService.getBoundUser(message.author.id);
 
-    // Confirmation prompt
+    // 確認提示
     const confirmEmbed = new EmbedBuilder()
       .setColor('Orange')
-      .setTitle('⚠️ Confirm Account Unbinding')
-      .setDescription('Are you sure you want to unbind your Discord account from your Pterodactyl account?')
+      .setTitle('⚠️ 確認解除帳號綁定')
+      .setDescription('您確定要解除 Discord 帳號與 Pterodactyl 帳號的綁定嗎？')
       .addFields(
         { 
-          name: '📋 Current Binding', 
-          value: `**User ID:** ${currentUser?.pterodactyl_user_id}\n**API Key:** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
+          name: '📋 目前綁定資訊', 
+          value: `**使用者 ID：** ${currentUser?.pterodactyl_user_id}\n**API 金鑰：** \`${currentUser?.pterodactyl_api_key.substring(0, 8)}...\``, 
           inline: false 
         },
         { 
-          name: '⚠️ What happens when you unbind:', 
-          value: '• You will lose access to all server management commands\n• You will need to use `!bind` again to regain access\n• Your servers will remain intact on the panel',
+          name: '⚠️ 解除綁定後的影響：', 
+          value: '• 您將失去所有伺服器管理指令的存取權\n• 您需要再次使用 `!bind` 才能重新取得存取權\n• 您的伺服器將保留在面板上',
           inline: false 
         }
       )
@@ -190,12 +190,12 @@ export async function executePrefix(
 
     const confirmButton = new ButtonBuilder()
       .setCustomId('unbind_confirm_prefix')
-      .setLabel('✅ Yes, Unbind Account')
+      .setLabel('✅ 是的，解除綁定')
       .setStyle(ButtonStyle.Danger);
 
     const cancelButton = new ButtonBuilder()
       .setCustomId('unbind_cancel_prefix')
-      .setLabel('❌ Cancel')
+      .setLabel('❌ 取消')
       .setStyle(ButtonStyle.Secondary);
 
     const row = new ActionRowBuilder<ButtonBuilder>()
@@ -207,7 +207,7 @@ export async function executePrefix(
       allowedMentions: { repliedUser: false }
     });
 
-    // Wait for button interaction
+    // 等待按鈕互動
     try {
       const buttonInteraction = await confirmMessage.awaitMessageComponent({
         componentType: ComponentType.Button,
@@ -218,8 +218,8 @@ export async function executePrefix(
       if (buttonInteraction.customId === 'unbind_cancel_prefix') {
         const cancelEmbed = new EmbedBuilder()
           .setColor('Grey')
-          .setTitle('❌ Unbinding Cancelled')
-          .setDescription('Account unbinding has been cancelled. Your account remains bound.')
+          .setTitle('❌ 已取消解除綁定')
+          .setDescription('已取消解除帳號綁定，您的帳號仍保持綁定狀態。')
           .setTimestamp();
 
         await buttonInteraction.update({ embeds: [cancelEmbed], components: [] });
@@ -227,43 +227,43 @@ export async function executePrefix(
       }
 
       if (buttonInteraction.customId === 'unbind_confirm_prefix') {
-        // Proceed with unbinding
+        // 執行解除綁定
         await authService.unbindUser(message.author.id);
 
         const successEmbed = new EmbedBuilder()
           .setColor('Green')
-          .setTitle('✅ Account Unbound Successfully')
-          .setDescription('Your Discord account has been successfully unbound from your Pterodactyl account.')
+          .setTitle('✅ 帳號解除綁定成功')
+          .setDescription('您的 Discord 帳號已成功解除與 Pterodactyl 帳號的綁定。')
           .addFields(
             { 
-              name: 'What\'s Next?', 
-              value: 'You will need to use `!bind` again to access server management features.',
+              name: '接下來呢？', 
+              value: '您需要再次使用 `!bind` 才能存取伺服器管理功能。',
               inline: false 
             }
           )
           .setTimestamp();
 
         await buttonInteraction.update({ embeds: [successEmbed], components: [] });
-        Logger.info(`User ${message.author.tag} unbound their account`);
+        Logger.info(`使用者 ${message.author.tag} 已解除帳號綁定`);
       }
 
     } catch (error) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⏰ Confirmation Timeout')
-        .setDescription('Account unbinding cancelled due to timeout.')
+        .setTitle('⏰ 確認逾時')
+        .setDescription('由於逾時，已取消解除帳號綁定。')
         .setTimestamp();
 
       await confirmMessage.edit({ embeds: [timeoutEmbed], components: [] });
     }
 
   } catch (error) {
-    Logger.error('Error in unbind command (prefix):', error);
+    Logger.error('unbind 指令（前綴）發生錯誤：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while unbinding your account. Please try again later.')
+      .setTitle('❌ 錯誤')
+      .setDescription('解除帳號綁定時發生錯誤，請稍後再試。')
       .setTimestamp();
 
     await message.reply({ 
