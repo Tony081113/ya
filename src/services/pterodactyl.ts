@@ -15,7 +15,7 @@ export class PterodactylService {
     });
   }
 
-  // 設定使用者專用 API 金鑰以進行操作
+  // Set user-specific API key for operations
   setUserApiKey(apiKey: string): void {
     this.userClient = axios.create({
       baseURL: `${process.env.PTERODACTYL_URL}/api/client`,
@@ -26,7 +26,7 @@ export class PterodactylService {
     });
   }
 
-  // 設定管理員 API 金鑰以進行操作（還原至管理員客戶端）
+  // Set admin API key for operations (revert to admin client)
   setAdminApiKey(): void {
     this.client = axios.create({
       baseURL: `${process.env.PTERODACTYL_URL}/api/application`,
@@ -41,7 +41,7 @@ export class PterodactylService {
     const eggName = egg.name?.toLowerCase() || '';
     const nestName = egg.nest_name?.toLowerCase() || '';
     
-    // 根據 egg 類型智慧選擇預設值
+    // Smart defaults based on egg type
     if (eggName.includes('node') || eggName.includes('nodejs')) {
       return 'node index.js';
     }
@@ -66,27 +66,27 @@ export class PterodactylService {
       return './start.sh';
     }
     
-    // 通用 AIO（All-in-One）egg — 常見於自訂部署
+    // Generic AIO (All-in-One) eggs - common for custom deployments
     if (eggName.includes('aio') || eggName.includes('pterodactyl')) {
       return 'bash';
     }
     
-    // 依巢類型的備用預設
+    // Fallback based on nest type
     if (nestName.includes('minecraft')) {
       return 'java -Xmx1024M -Xms1024M -jar server.jar nogui';
     }
     
-    // 通用備用預設
+    // Generic fallback
     return 'echo "Server configured with smart defaults"';
   }
 
-  // 管理員操作（使用管理員 API 金鑰）
+  // Admin operations (using admin API key)
   async getUsers(): Promise<PterodactylUser[]> {
     try {
       const response = await this.client.get('/users');
       return response.data.data.map((user: any) => user.attributes);
     } catch (error) {
-      throw new Error(`取得使用者列表失敗：${error}`);
+      throw new Error(`Failed to fetch users: ${error}`);
     }
   }
 
@@ -95,7 +95,7 @@ export class PterodactylService {
       const response = await this.client.get(`/users/${userId}`);
       return response.data.attributes;
     } catch (error) {
-      throw new Error(`取得使用者失敗：${error}`);
+      throw new Error(`Failed to fetch user: ${error}`);
     }
   }
 
@@ -110,21 +110,44 @@ export class PterodactylService {
       const response = await this.client.post('/users', userData);
       return response.data.attributes;
     } catch (error) {
-      throw new Error(`建立使用者失敗：${error}`);
+      throw new Error(`Failed to create user: ${error}`);
     }
   }
 
   async getNodes(): Promise<any[]> {
     try {
-      const response = await this.client.get('/nodes');      // 過濾掉未定義或不完整的節點
+      const response = await this.client.get('/nodes');      // Filter out undefined/incomplete nodes
       const nodes = response.data.data
         .map((node: any) => node.attributes)
         .filter((node: any) => node && node.id && node.name);
       
       return nodes;
     } catch (error) {
-      console.error('取得節點列表失敗：', error);
-      throw new Error(`取得節點列表失敗：${error}`);
+      console.error('Failed to fetch nodes:', error);
+      throw new Error(`Failed to fetch nodes: ${error}`);
+    }
+  }
+
+  /** 取得指定節點中第一個未被使用的 Allocation，若無可用 Port 則拋出錯誤 */
+  async getFirstAvailableAllocation(nodeId: number): Promise<{ id: number; port: number }> {
+    try {
+      const response = await this.client.get(`/nodes/${nodeId}/allocations`);
+      const allocations: any[] = response.data.data;
+      const available = allocations.find((a: any) => a.attributes.assigned === false);
+
+      if (!available) {
+        throw new Error(`節點 ${nodeId} 已無可用的 Port，請選擇其他節點或釋放現有 Allocation。`);
+      }
+
+      return {
+        id: available.attributes.id,
+        port: available.attributes.port,
+      };
+    } catch (error: any) {
+      if (error.message?.includes('節點')) {
+        throw error;
+      }
+      throw new Error(`無法取得節點 ${nodeId} 的 Allocation：${error.message || error}`);
     }
   }
 
@@ -133,71 +156,65 @@ export class PterodactylService {
       const response = await this.client.get(`/nodes/${nodeId}/allocations`);
       return response.data.data;
     } catch (error) {
-      console.error(`取得節點 ${nodeId} 的配置失敗：`, error);
-      throw new Error(`取得配置失敗：${error}`);
+      console.error(`Failed to fetch allocations for node ${nodeId}:`, error);
+      throw new Error(`Failed to fetch allocations: ${error}`);
     }
   }
 
   async getEggs(): Promise<any[]> {
     try {
-      // 先取得所有巢
+      // First get all nests
       const nestsResponse = await this.client.get('/nests');
       const nests = nestsResponse.data.data;
       
       const allEggs: any[] = [];
       
-      // 取得每個巢的 egg，包含其變數定義
+      // Get eggs from each nest
       for (const nest of nests) {
         try {
-          const eggsResponse = await this.client.get(`/nests/${nest.attributes.id}/eggs?include=variables`);
+          const eggsResponse = await this.client.get(`/nests/${nest.attributes.id}/eggs`);
           const eggs = eggsResponse.data.data.map((egg: any) => ({
             ...egg.attributes,
             nest_name: nest.attributes.name,
-            nest_id: nest.attributes.id,
-            variables: egg.attributes?.relationships?.variables?.data?.map((v: any) => v.attributes) || []
+            nest_id: nest.attributes.id
           }));
           allEggs.push(...eggs);
         } catch (error) {
-          console.warn(`取得來自 ${nest.attributes.name} 巢的 egg 失敗：`, error);
+          console.warn(`Failed to fetch eggs for nest ${nest.attributes.name}:`, error);
         }
       }
-        // 過濾掉未定義或不完整的 egg
+        // Filter out undefined/incomplete eggs
       const validEggs = allEggs.filter(egg => egg && egg.id && egg.name);
       
       return validEggs;
     } catch (error) {
-      throw new Error(`取得 egg 列表失敗：${error}`);
+      throw new Error(`Failed to fetch eggs: ${error}`);
     }
   }
 
   async createServer(options: ServerCreationOptions & { user: number }): Promise<PterodactylServer> {
     try {
-      // 取得所選 egg 的詳細資訊以正確設定
-      const eggs = await this.getEggs();
-      const selectedEgg = eggs.find(egg => egg.id === options.egg);
-      
-      if (!selectedEgg) {
-        throw new Error(`找不到 ID 為 ${options.egg} 的 egg`);
-      }
+      // 從環境變數讀取固定的 Nest / Egg 設定
+      const nestId = parseInt(process.env.PTERO_NEST_ID || '1', 10);
+      const eggId  = parseInt(process.env.PTERO_EGG_ID  || '1', 10);
 
-      // 從 egg 變數預設值建立環境變數
-      const eggEnvDefaults: Record<string, string> = {};
-      if (Array.isArray(selectedEgg.variables)) {
-        for (const variable of selectedEgg.variables) {
-          if (variable.env_variable) {
-            eggEnvDefaults[variable.env_variable] = variable.default_value ?? '';
-          }
-        }
-      }
+      // 1. 先取得該節點第一個可用的 Allocation（同時拿到 Port 號碼）
+      const allocation = await this.getFirstAvailableAllocation(options.nodeId);
 
-      // 依 Pterodactyl API 規格建立伺服器的基本請求酬載
+      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令）
+      const eggResponse = await this.client.get(
+        `/nests/${nestId}/eggs/${eggId}?include=variables`
+      );
+      const egg = eggResponse.data.attributes;
+
+      // 3. 組裝建立伺服器所需的 Payload
       const serverData = {
         name: options.name,
         description: options.description || '',
         user: options.user,
-        egg: options.egg,
-        docker_image: selectedEgg.docker_image || 'ghcr.io/pterodactyl/yolks:java_17',
-        startup: selectedEgg.startup || 'echo "Starting server..."',
+        egg: eggId,
+        docker_image: egg.docker_image || 'ghcr.io/pterodactyl/yolks:python_3_11',
+        startup: egg.startup || 'pip install -r requirements.txt && python bot.py',
         limits: {
           memory: options.memory,
           swap: 0,
@@ -210,71 +227,71 @@ export class PterodactylService {
           backups: 1,
           allocations: 1,
         },
-        deploy: {
-          locations: [options.location || 1],
-          dedicated_ip: false,
-          port_range: [],
+        // 使用指定的 Allocation 而非由面板自動分配
+        allocation: {
+          default: allocation.id,
         },
         environment: {
-          // 使用 egg 的變數預設值作為基底
-          ...eggEnvDefaults,
-          
-          // 針對含有 {{STARTUP_CMD}} 佔位符的 egg 套用智慧預設
-          ...(selectedEgg.startup?.includes('{{STARTUP_CMD}}') && {
-            STARTUP_CMD: this.getSmartStartupCommand(selectedEgg)
-          }),
-          
-          // 新增 Paper 專用變數
-          ...(selectedEgg.name?.toLowerCase().includes('paper') && {
-            SERVER_JARFILE: 'server.jar',
-            BUILD_NUMBER: 'latest'
-          }),
-          
-          // 新增 Minecraft 專用變數
-          ...(selectedEgg.nest_name?.toLowerCase().includes('minecraft') && !selectedEgg.name?.toLowerCase().includes('paper') && {
-            SERVER_JARFILE: 'server.jar'
-          })
-        }
-      };      const response = await this.client.post('/servers', serverData);
+          // Python 固定設定
+          STARTUP_CMD: 'pip install -r requirements.txt',
+          SECOND_CMD: 'python bot.py',
+          QUERY_PORT: allocation.port.toString(),
+          // 常見選填欄位，避免 422 錯誤
+          SERVER_VERSION: 'latest',
+          QUERY_PROTOCOLS: 'tcp',
+        },
+      };
+
+      const response = await this.client.post('/servers', serverData);
       return response.data.attributes;
     } catch (error: any) {
-      console.error('伺服器建立失敗：', {
+      // 若是我們自己拋出的業務錯誤（如無可用 Port），直接向上傳遞
+      if (!error.response) {
+        throw error;
+      }
+
+      console.error('建立伺服器失敗：', {
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
       });
 
       if (error.response?.status === 422) {
         const validationErrors = error.response?.data?.errors;
-        
+
         if (validationErrors) {
           if (Array.isArray(validationErrors)) {
-            const errorMessages = validationErrors.map((err, index) => {
-              if (typeof err === 'object' && err.detail) {
-                return err.detail;
-              }
-              return `錯誤 ${index + 1}：${JSON.stringify(err)}`;
-            }).join('; ');
-            throw new Error(`驗證失敗：${errorMessages}`);
+            const errorMessages = validationErrors
+              .map((err: any, index: number) => {
+                if (typeof err === 'object' && err.detail) {
+                  return err.detail;
+                }
+                return `錯誤 ${index + 1}：${JSON.stringify(err)}`;
+              })
+              .join('；');
+            throw new Error(`資料驗證失敗：${errorMessages}`);
           } else {
             const errorMessages = Object.entries(validationErrors)
-              .map(([field, messages]: [string, any]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-              .join('; ');
-            throw new Error(`驗證失敗：${errorMessages}`);
+              .map(
+                ([field, messages]: [string, any]) =>
+                  `${field}：${Array.isArray(messages) ? messages.join('、') : messages}`
+              )
+              .join('；');
+            throw new Error(`資料驗證失敗：${errorMessages}`);
           }
         }
-        throw new Error('伺服器建立失敗：提供的資料無效');
+        throw new Error('建立伺服器失敗：提供的資料無效');
       }
-      
+
       throw new Error(`建立伺服器失敗：${error.response?.statusText || error.message}`);
     }
   }
 
-  // 使用者操作（使用使用者專用 API 金鑰）
+  // User operations (using user-specific API key)
   async getClientUserInfo(): Promise<any> {
     if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
+      throw new Error('User API key not set');
     }
 
     try {
@@ -285,34 +302,34 @@ export class PterodactylService {
       } else if (response.data) {
         return response.data;
       } else {
-        throw new Error('Pterodactyl API 回應結構異常');
+        throw new Error('Unexpected response structure from Pterodactyl API');
       }
     } catch (error: any) {
       if (error.response?.status === 401) {
-        throw new Error('API 金鑰無效 — 提供的 API 金鑰不正確或已被撤銷。');
+        throw new Error('Invalid API key - The provided API key is not valid or has been revoked.');
       } else if (error.response?.status === 404) {
-        throw new Error('找不到 API 端點 — 請確認您的 Pterodactyl 面板網址。');
+        throw new Error('API endpoint not found - Please check your Pterodactyl panel URL.');
       } else if (error.response?.status === 403) {
-        throw new Error('存取被拒 — API 金鑰可能沒有足夠的權限');
+        throw new Error('Access forbidden - The API key may not have sufficient permissions');
       } else if (error.code === 'ECONNREFUSED') {
-        throw new Error('連線被拒 — 無法連線至 Pterodactyl 面板。');
+        throw new Error('Connection refused - Cannot connect to Pterodactyl panel.');
       } else if (error.code === 'ENOTFOUND') {
-        throw new Error('找不到網域 — Pterodactyl 面板網址似乎無效');
+        throw new Error('Domain not found - The Pterodactyl panel URL appears to be invalid');
       }
       
-      throw new Error(`取得使用者資訊失敗：${error.response?.status} ${error.response?.statusText || error.message}`);
+      throw new Error(`Failed to fetch user info: ${error.response?.status} ${error.response?.statusText || error.message}`);
     }
   }
   async getUserServers(): Promise<PterodactylServer[]> {
     if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
+      throw new Error('User API key not set');
     }
 
     try {
       const response = await this.userClient.get('/');
       const servers = response.data.data.map((server: any) => server.attributes);
       
-      // 為每台伺服器取得額外詳細資訊以獲得狀態
+      // Fetch additional details for each server to get status
       const detailedServers = await Promise.all(
         servers.map(async (server: any) => {
           try {
@@ -324,7 +341,7 @@ export class PterodactylService {
               status: resourceData.current_state || 'offline'
             };
           } catch (error) {
-            console.error(`取得伺服器 ${server.identifier} 狀態失敗：`, error);
+            console.error(`Failed to fetch status for server ${server.identifier}:`, error);
             return {
               ...server,
               status: 'unknown'
@@ -335,37 +352,116 @@ export class PterodactylService {
       
       return detailedServers;
     } catch (error) {
-      throw new Error(`取得使用者伺服器失敗：${error}`);
+      throw new Error(`Failed to fetch user servers: ${error}`);
     }
   }
 
   async getServerDetails(serverId: string): Promise<PterodactylServer> {
     if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
+      throw new Error('User API key not set');
     }
 
     try {
       const response = await this.userClient.get(`/servers/${serverId}`);
       return response.data.attributes;
     } catch (error) {
-      throw new Error(`取得伺服器詳細資訊失敗：${error}`);
+      throw new Error(`Failed to fetch server details: ${error}`);
     }
   }
   async deleteServer(serverIdentifier: string): Promise<void> {
     try {
-      // 先嘗試取得所有伺服器，以 UUID 找到目標伺服器
+      // First, try to get all servers to find the server by UUID
       const servers = await this.getAllServers();
       const server = servers.find(s => s.uuid === serverIdentifier || s.id?.toString() === serverIdentifier);
       
       if (!server) {
-        throw new Error(`找不到識別碼為 ${serverIdentifier} 的伺服器`);
+        throw new Error(`Server with identifier ${serverIdentifier} not found`);
       }
-        // 使用內部伺服器 ID 進行刪除（Pterodactyl 管理員 API 要求內部 ID）
+        // Use the internal server ID for deletion (Pterodactyl admin API expects internal ID)
       await this.client.delete(`/servers/${server.id}`);
       
     } catch (error) {
-      console.error('伺服器刪除錯誤：', error);
-      throw new Error(`刪除伺服器失敗：${error}`);
+      console.error('Server deletion error:', error);
+      throw new Error(`Failed to delete server: ${error}`);
+    }
+  }
+
+  async getAllServers(): Promise<any[]> {
+    try {
+      const response = await this.client.get('/servers');
+      return response.data.data.map((server: any) => server.attributes);
+    } catch (error) {
+      throw new Error(`Failed to fetch all servers: ${error}`);
+    }
+  }
+
+  async suspendServer(serverId: string): Promise<void> {
+    try {
+      await this.client.post(`/servers/${serverId}/suspend`);
+    } catch (error) {
+      throw new Error(`Failed to suspend server: ${error}`);
+    }
+  }
+
+  async unsuspendServer(serverId: string): Promise<void> {
+    try {
+      await this.client.post(`/servers/${serverId}/unsuspend`);
+    } catch (error) {
+      throw new Error(`Failed to unsuspend server: ${error}`);
+    }
+  }
+
+  async sendPowerAction(serverId: string, action: 'start' | 'stop' | 'restart' | 'kill'): Promise<void> {
+    if (!this.userClient) {
+      throw new Error('User API key not set');
+    }
+
+    try {
+      await this.userClient.post(`/servers/${serverId}/power`, { signal: action });
+    } catch (error) {
+      throw new Error(`Failed to send power action: ${error}`);
+    }
+  }
+
+  async userOwnsServer(serverId: string): Promise<boolean> {
+    if (!this.userClient) {
+      return false;
+    }
+
+    try {
+      const userServers = await this.getUserServers();
+      return userServers.some(server => server.uuid === serverId || server.id?.toString() === serverId);
+    } catch (error) {
+      console.error('Error checking server ownership:', error);
+      return false;
+    }
+  }
+
+  async getUserServerById(serverId: string): Promise<PterodactylServer | null> {
+    if (!this.userClient) {
+      throw new Error('User API key not set');
+    }
+
+    try {
+      const userServers = await this.getUserServers();
+      const server = userServers.find(s => s.uuid === serverId || s.id?.toString() === serverId);
+      
+      if (!server) {
+        return null;
+      }      return server;
+    } catch (error) {
+      throw new Error(`Failed to fetch server: ${error}`);
+    }
+  }  async getServerResourceUsage(serverId: string): Promise<any> {
+    if (!this.userClient) {
+      throw new Error('User API key not set');
+    }
+
+    try {
+      const response = await this.userClient.get(`/servers/${serverId}/resources`);
+      return response.data.attributes;
+    } catch (error) {
+      throw new Error(`Failed to fetch server resources: ${error}`);
     }
   }
 
@@ -384,85 +480,6 @@ export class PterodactylService {
     } catch (error: any) {
       const detail = error.response?.data?.errors?.[0]?.detail || error.response?.statusText || error.message;
       throw new Error(`刪除配置失敗：${detail}`);
-    }
-  }
-
-  async getAllServers(): Promise<any[]> {
-    try {
-      const response = await this.client.get('/servers');
-      return response.data.data.map((server: any) => server.attributes);
-    } catch (error) {
-      throw new Error(`取得所有伺服器失敗：${error}`);
-    }
-  }
-
-  async suspendServer(serverId: string): Promise<void> {
-    try {
-      await this.client.post(`/servers/${serverId}/suspend`);
-    } catch (error) {
-      throw new Error(`暫停伺服器失敗：${error}`);
-    }
-  }
-
-  async unsuspendServer(serverId: string): Promise<void> {
-    try {
-      await this.client.post(`/servers/${serverId}/unsuspend`);
-    } catch (error) {
-      throw new Error(`解除暫停伺服器失敗：${error}`);
-    }
-  }
-
-  async sendPowerAction(serverId: string, action: 'start' | 'stop' | 'restart' | 'kill'): Promise<void> {
-    if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
-    }
-
-    try {
-      await this.userClient.post(`/servers/${serverId}/power`, { signal: action });
-    } catch (error) {
-      throw new Error(`發送電源指令失敗：${error}`);
-    }
-  }
-
-  async userOwnsServer(serverId: string): Promise<boolean> {
-    if (!this.userClient) {
-      return false;
-    }
-
-    try {
-      const userServers = await this.getUserServers();
-      return userServers.some(server => server.uuid === serverId || server.id?.toString() === serverId);
-    } catch (error) {
-      console.error('檢查伺服器所有權時發生錯誤：', error);
-      return false;
-    }
-  }
-
-  async getUserServerById(serverId: string): Promise<PterodactylServer | null> {
-    if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
-    }
-
-    try {
-      const userServers = await this.getUserServers();
-      const server = userServers.find(s => s.uuid === serverId || s.id?.toString() === serverId);
-      
-      if (!server) {
-        return null;
-      }      return server;
-    } catch (error) {
-      throw new Error(`取得伺服器失敗：${error}`);
-    }
-  }  async getServerResourceUsage(serverId: string): Promise<any> {
-    if (!this.userClient) {
-      throw new Error('尚未設定使用者 API 金鑰');
-    }
-
-    try {
-      const response = await this.userClient.get(`/servers/${serverId}/resources`);
-      return response.data.attributes;
-    } catch (error) {
-      throw new Error(`取得伺服器資源使用狀況失敗：${error}`);
     }
   }
 }
