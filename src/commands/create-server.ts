@@ -16,30 +16,30 @@ import { Logger } from '../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('create-server')
-  .setDescription('Create a new Pterodactyl server')
+  .setDescription('建立一台新的 Pterodactyl 伺服器')
   .addStringOption(option =>
     option.setName('name')
-      .setDescription('Server name')
+      .setDescription('伺服器名稱')
       .setRequired(true)
   )
   .addIntegerOption(option =>
     option.setName('memory')
-      .setDescription('Memory in MB (e.g., 1024)')
+      .setDescription('記憶體大小（MB），例如：1024')
       .setRequired(true)
   )
   .addIntegerOption(option =>
     option.setName('disk')
-      .setDescription('Disk space in MB (e.g., 5120)')
+      .setDescription('磁碟空間（MB），例如：5120')
       .setRequired(true)
   )
   .addIntegerOption(option =>
     option.setName('cpu')
-      .setDescription('CPU percentage (e.g., 100)')
+      .setDescription('CPU 使用率百分比，例如：100')
       .setRequired(true)
   )
   .addStringOption(option =>
     option.setName('description')
-      .setDescription('Server description')
+      .setDescription('伺服器描述')
       .setRequired(false)
   );
 
@@ -51,7 +51,7 @@ export async function execute(
   try {
     await interaction.deferReply();
 
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(interaction.user, interaction.member as any);
     
     const name = interaction.options.getString('name', true);
@@ -60,8 +60,8 @@ export async function execute(
     const disk = interaction.options.getInteger('disk', true);
     const cpu = interaction.options.getInteger('cpu', true);
 
-    // Set admin API key to get eggs and nodes
-    pterodactylService.setAdminApiKey();    // Get available eggs and nodes
+    // 設定管理員 API 金鑰以取得 egg 和節點資訊
+    pterodactylService.setAdminApiKey();    // 取得可用的 egg 和節點
     let eggs, nodes;
     try {
       [eggs, nodes] = await Promise.all([
@@ -71,15 +71,15 @@ export async function execute(
     } catch (error) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Error')
-        .setDescription('Failed to fetch available server options. Please try again later.')
+        .setTitle('❌ 錯誤')
+        .setDescription('無法取得可用的伺服器選項，請稍後再試。')
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
       return;
     }
 
-    // Filter out undefined or incomplete eggs before using them
+    // 過濾掉未定義或不完整的 egg
     const validEggs = eggs.filter(
       (egg: any) => egg && egg.id && egg.name && egg.nest_name
     );
@@ -87,8 +87,8 @@ export async function execute(
     if (validEggs.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ No Valid Server Types Available')
-        .setDescription('No valid server types are currently available.')
+        .setTitle('❌ 目前沒有可用的伺服器類型')
+        .setDescription('目前沒有任何有效的伺服器類型可供使用。')
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
@@ -98,19 +98,19 @@ export async function execute(
     if (nodes.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ No Nodes Available')
-        .setDescription('No nodes are currently available for server deployment.')
+        .setTitle('❌ 沒有可用的節點')
+        .setDescription('目前沒有任何節點可用於部署伺服器。')
         .setTimestamp();      await interaction.editReply({ embeds: [embed] });
       return;
     }
 
-    // Step 1: Node Selection
+    // 步驟一：選擇節點
     const nodeSelectMenu = new StringSelectMenuBuilder()
       .setCustomId('select_node')
-      .setPlaceholder('Choose a node/location')      .addOptions(
+      .setPlaceholder('選擇節點／位置')      .addOptions(
         nodes.filter(node => node && (node.name || node.attributes?.name) && (node.id || node.attributes?.id)).slice(0, 25).map(node => ({
           label: `${node.name || node.attributes?.name} (${node.location_id || node.attributes?.location_id})`,
-          description: `${(node.memory || node.attributes?.memory) - ((node.allocated_resources?.memory || node.attributes?.allocated_resources?.memory) || 0)}MB RAM available`,
+          description: `${(node.memory || node.attributes?.memory) - ((node.allocated_resources?.memory || node.attributes?.allocated_resources?.memory) || 0)}MB 可用 RAM`,
           value: (node.id || node.attributes?.id).toString(),
         }))
       );
@@ -119,12 +119,12 @@ export async function execute(
 
     const nodeEmbed = new EmbedBuilder()
       .setColor('Blue')
-      .setTitle('🌍 Select Node/Location')
-      .setDescription('Please select a node where your server will be deployed:')
+      .setTitle('🌍 選擇節點／位置')
+      .setDescription('請選擇要部署伺服器的節點：')
       .addFields(
-        { name: 'Server Name', value: name, inline: true },
-        { name: 'Memory', value: `${memory} MB`, inline: true },
-        { name: 'Disk', value: `${disk} MB`, inline: true },
+        { name: '伺服器名稱', value: name, inline: true },
+        { name: '記憶體', value: `${memory} MB`, inline: true },
+        { name: '磁碟', value: `${disk} MB`, inline: true },
         { name: 'CPU', value: `${cpu}%`, inline: true }
       )
       .setTimestamp();
@@ -146,14 +146,14 @@ export async function execute(
       await nodeInteraction.deferUpdate();
       selectedNodeId = parseInt(nodeInteraction.values[0]);
 
-      // Step 2: Egg Selection
+      // 步驟二：選擇 Egg
       const eggSelectMenu = new StringSelectMenuBuilder()
         .setCustomId('select_egg')
-        .setPlaceholder('Choose a server type')
+        .setPlaceholder('選擇伺服器類型')
         .addOptions(
           validEggs.slice(0, 25).map(egg => ({
             label: `${egg.name} (${egg.nest_name})`,
-            description: egg.description?.substring(0, 80) || `From ${egg.nest_name} nest`,
+            description: egg.description?.substring(0, 80) || `來自 ${egg.nest_name} 巢`,
             value: egg.id.toString(),
           }))
         );
@@ -162,13 +162,13 @@ export async function execute(
 
       const eggEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('🥚 Select Server Type')
-        .setDescription('Please select a server type from the dropdown menu:')
+        .setTitle('🥚 選擇伺服器類型')
+        .setDescription('請從下拉選單中選擇伺服器類型：')
         .addFields(
-          { name: 'Server Name', value: name, inline: true },          { name: 'Memory', value: `${memory} MB`, inline: true },
-          { name: 'Disk', value: `${disk} MB`, inline: true },
+          { name: '伺服器名稱', value: name, inline: true },          { name: '記憶體', value: `${memory} MB`, inline: true },
+          { name: '磁碟', value: `${disk} MB`, inline: true },
           { name: 'CPU', value: `${cpu}%`, inline: true },
-          { name: 'Node', value: nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.name || nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.attributes?.name || 'Unknown', inline: true }
+          { name: '節點', value: nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.name || nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.attributes?.name || '未知', inline: true }
         )
         .setTimestamp();
 
@@ -183,10 +183,10 @@ export async function execute(
       const selectedNode = nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId);
       const selectedEgg = validEggs.find(e => e.id === selectedEggId);
 
-      // Defer the interaction for server creation
+      // 延遲互動以建立伺服器
       await eggInteraction.deferUpdate();
 
-      // Create server (smart defaults handled in service)
+      // 建立伺服器（服務層自動處理預設值）
       const server = await pterodactylService.createServer({
         name,
         description,
@@ -199,37 +199,37 @@ export async function execute(
         user: context.user.pterodactyl_user_id
       });
 
-      // Add to database
+      // 新增至資料庫
       (authService as any).db.addUserServer(interaction.user.id, server.uuid, server.name);
 
       const successEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('✅ Server Created Successfully')
-        .setDescription(`Your server **${server.name}** has been created!`)
+        .setTitle('✅ 伺服器已成功建立')
+        .setDescription(`您的伺服器 **${server.name}** 已建立！`)
         .addFields(
-          { name: '🆔 Server ID', value: server.uuid, inline: true },
-          { name: '📊 Status', value: server.status || 'Installing', inline: true },
-          { name: '💾 Memory', value: `${server.limits.memory} MB`, inline: true },
-          { name: '💿 Disk', value: `${server.limits.disk} MB`, inline: true },
+          { name: '🆔 伺服器 ID', value: server.uuid, inline: true },
+          { name: '📊 狀態', value: server.status || '安裝中', inline: true },
+          { name: '💾 記憶體', value: `${server.limits.memory} MB`, inline: true },
+          { name: '💿 磁碟', value: `${server.limits.disk} MB`, inline: true },
           { name: '⚡ CPU', value: `${server.limits.cpu}%`, inline: true },
-          { name: '🌍 Node', value: selectedNode?.name || selectedNode?.attributes?.name || 'Unknown', inline: true },
-          { name: '🥚 Type', value: `${selectedEgg?.name} (${selectedEgg?.nest_name})`, inline: true }
+          { name: '🌍 節點', value: selectedNode?.name || selectedNode?.attributes?.name || '未知', inline: true },
+          { name: '🥚 類型', value: `${selectedEgg?.name} (${selectedEgg?.nest_name})`, inline: true }
         )
-        .setFooter({ text: 'Server is installing. This may take a few minutes. Startup commands are auto-configured.' })
+        .setFooter({ text: '伺服器正在安裝中，可能需要幾分鐘。啟動指令已自動設定。' })
         .setTimestamp();
 
       await eggInteraction.editReply({
         embeds: [successEmbed],
         components: []
-      });Logger.info(`User ${interaction.user.tag} created server: ${server.name} (${server.uuid}) on node ${selectedNode?.name || selectedNode?.attributes?.name || 'Unknown'}`);
+      });Logger.info(`使用者 ${interaction.user.tag} 已建立伺服器：${server.name} (${server.uuid})，節點：${selectedNode?.name || selectedNode?.attributes?.name || '未知'}`);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('time')) {
         const timeoutEmbed = new EmbedBuilder()
           .setColor('Orange')
-          .setTitle('⏰ Selection Timeout')
-          .setDescription('Server creation cancelled due to timeout.')
+          .setTitle('⏰ 選擇逾時')
+          .setDescription('已因逾時取消建立伺服器。')
           .setTimestamp();
 
         await interaction.editReply({
@@ -241,24 +241,24 @@ export async function execute(
       }
     }
   } catch (error) {
-    Logger.error('Error in create-server command:', error);
+    Logger.error('create-server 指令發生錯誤：', error);
     
-    let errorMessage = 'An error occurred while creating the server.';
-    let title = '❌ Error';
+    let errorMessage = '建立伺服器時發生錯誤。';
+    let title = '❌ 錯誤';
     
-    // Handle specific error types with prettier messages
+    // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
       if (error.message.includes('bind your account first')) {
-        title = '🔗 Account Not Bound';
-        errorMessage = 'You need to bind your Discord account to your Pterodactyl account first!\n\nUse `/bind <your_api_key>` to get started.';
+        title = '🔗 帳號尚未綁定';
+        errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `/bind <您的_api_key>` 開始綁定。';
       } else if (error.message.includes('Invalid API key')) {
-        title = '🔑 Invalid API Key';
-        errorMessage = 'Your API key appears to be invalid or expired. Please use `/bind` with a new API key.';
+        title = '🔑 無效的 API 金鑰';
+        errorMessage = '您的 API 金鑰似乎無效或已過期，請使用 `/bind` 重新綁定新的 API 金鑰。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
-        title = '🔌 Connection Error';
-        errorMessage = 'Unable to connect to the Pterodactyl panel. Please try again later.';
+        title = '🔌 連線錯誤';
+        errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else if (error.message.includes('Validation failed')) {
-        title = '⚠️ Invalid Server Configuration';
+        title = '⚠️ 伺服器設定無效';
         errorMessage = error.message;
       } else {
         errorMessage = error.message;
@@ -286,24 +286,24 @@ export async function executePrefix(
   pterodactylService: PterodactylService
 ) {
   try {
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(message.author, message.member as any);
     
-    // Check for required arguments
+    // 檢查必要的參數
     if (args.length < 4) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Invalid Usage')
-        .setDescription('Missing required arguments!')
+        .setTitle('❌ 用法錯誤')
+        .setDescription('缺少必要的參數！')
         .addFields(
           { 
-            name: 'Usage', 
-            value: '`!create-server <name> <memory_mb> <disk_mb> <cpu_percent> [description]`',
+            name: '用法', 
+            value: '`!create-server <名稱> <記憶體MB> <磁碟MB> <CPU百分比> [描述]`',
             inline: false 
           },
           { 
-            name: 'Example', 
-            value: '`!create-server MyServer 1024 5120 100 "My awesome server"`',
+            name: '範例', 
+            value: '`!create-server MyServer 1024 5120 100 "我的超棒伺服器"`',
             inline: false 
           }
         )
@@ -322,12 +322,12 @@ export async function executePrefix(
     const cpu = parseInt(args[3]);
     let description = args.slice(4).join(' ') || undefined;
 
-    // Validate numeric inputs
+    // 驗證數字輸入
     if (isNaN(memory) || isNaN(disk) || isNaN(cpu)) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Invalid Input')
-        .setDescription('Memory, disk, and CPU must be valid numbers!')
+        .setTitle('❌ 輸入無效')
+        .setDescription('記憶體、磁碟與 CPU 必須為有效的數字！')
         .setTimestamp();
 
       await message.reply({ 
@@ -337,10 +337,10 @@ export async function executePrefix(
       return;
     }
 
-    // Set admin API key to get eggs and nodes
+    // 設定管理員 API 金鑰以取得 egg 和節點資訊
     pterodactylService.setAdminApiKey();
 
-    // Get available eggs and nodes
+    // 取得可用的 egg 和節點
     let eggs, nodes;
     try {
       [eggs, nodes] = await Promise.all([
@@ -350,8 +350,8 @@ export async function executePrefix(
     } catch (error) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ Error')
-        .setDescription('Failed to fetch available server options. Please try again later.')
+        .setTitle('❌ 錯誤')
+        .setDescription('無法取得可用的伺服器選項，請稍後再試。')
         .setTimestamp();
 
       await message.reply({ 
@@ -361,7 +361,7 @@ export async function executePrefix(
       return;
     }
 
-    // Filter out undefined or incomplete eggs before using them
+    // 過濾掉未定義或不完整的 egg
     const validEggs = eggs.filter(
       (egg: any) => egg && egg.id && egg.name && egg.nest_name
     );
@@ -369,8 +369,8 @@ export async function executePrefix(
     if (validEggs.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ No Valid Server Types Available')
-        .setDescription('No valid server types are currently available.')
+        .setTitle('❌ 目前沒有可用的伺服器類型')
+        .setDescription('目前沒有任何有效的伺服器類型可供使用。')
         .setTimestamp();
 
       await message.reply({ 
@@ -383,8 +383,8 @@ export async function executePrefix(
     if (nodes.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Red')
-        .setTitle('❌ No Nodes Available')
-        .setDescription('No nodes are currently available for server deployment.')
+        .setTitle('❌ 沒有可用的節點')
+        .setDescription('目前沒有任何節點可用於部署伺服器。')
         .setTimestamp();
 
       await message.reply({ 
@@ -394,14 +394,14 @@ export async function executePrefix(
       return;
     }
 
-    // Step 1: Node Selection
+    // 步驟一：選擇節點
     const nodeSelectMenu = new StringSelectMenuBuilder()
       .setCustomId('select_node')
-      .setPlaceholder('Choose a node/location')
+      .setPlaceholder('選擇節點／位置')
       .addOptions(
         nodes.filter(node => node && (node.name || node.attributes?.name) && (node.id || node.attributes?.id)).slice(0, 25).map(node => ({
           label: `${node.name || node.attributes?.name} (${node.location_id || node.attributes?.location_id})`,
-          description: `${(node.memory || node.attributes?.memory) - ((node.allocated_resources?.memory || node.attributes?.allocated_resources?.memory) || 0)}MB RAM available`,
+          description: `${(node.memory || node.attributes?.memory) - ((node.allocated_resources?.memory || node.attributes?.allocated_resources?.memory) || 0)}MB 可用 RAM`,
           value: (node.id || node.attributes?.id).toString(),
         }))
       );
@@ -410,12 +410,12 @@ export async function executePrefix(
 
     const nodeEmbed = new EmbedBuilder()
       .setColor('Blue')
-      .setTitle('🌍 Select Node/Location')
-      .setDescription('Please select a node where your server will be deployed:')
+      .setTitle('🌍 選擇節點／位置')
+      .setDescription('請選擇要部署伺服器的節點：')
       .addFields(
-        { name: 'Server Name', value: name, inline: true },
-        { name: 'Memory', value: `${memory} MB`, inline: true },
-        { name: 'Disk', value: `${disk} MB`, inline: true },
+        { name: '伺服器名稱', value: name, inline: true },
+        { name: '記憶體', value: `${memory} MB`, inline: true },
+        { name: '磁碟', value: `${disk} MB`, inline: true },
         { name: 'CPU', value: `${cpu}%`, inline: true }
       )
       .setTimestamp();
@@ -438,14 +438,14 @@ export async function executePrefix(
       await nodeInteraction.deferUpdate();
       selectedNodeId = parseInt(nodeInteraction.values[0]);
 
-      // Step 2: Egg Selection
+      // 步驟二：選擇 Egg
       const eggSelectMenu = new StringSelectMenuBuilder()
         .setCustomId('select_egg')
-        .setPlaceholder('Choose a server type')
+        .setPlaceholder('選擇伺服器類型')
         .addOptions(
           validEggs.slice(0, 25).map(egg => ({
             label: `${egg.name} (${egg.nest_name})`,
-            description: egg.description?.substring(0, 80) || `From ${egg.nest_name} nest`,
+            description: egg.description?.substring(0, 80) || `來自 ${egg.nest_name} 巢`,
             value: egg.id.toString(),
           }))
         );
@@ -454,14 +454,14 @@ export async function executePrefix(
 
       const eggEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('🥚 Select Server Type')
-        .setDescription('Please select a server type from the dropdown menu:')
+        .setTitle('🥚 選擇伺服器類型')
+        .setDescription('請從下拉選單中選擇伺服器類型：')
         .addFields(
-          { name: 'Server Name', value: name, inline: true },
-          { name: 'Memory', value: `${memory} MB`, inline: true },
-          { name: 'Disk', value: `${disk} MB`, inline: true },
+          { name: '伺服器名稱', value: name, inline: true },
+          { name: '記憶體', value: `${memory} MB`, inline: true },
+          { name: '磁碟', value: `${disk} MB`, inline: true },
           { name: 'CPU', value: `${cpu}%`, inline: true },
-          { name: 'Node', value: nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.name || nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.attributes?.name || 'Unknown', inline: true }
+          { name: '節點', value: nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.name || nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId)?.attributes?.name || '未知', inline: true }
         )
         .setTimestamp();
 
@@ -480,10 +480,10 @@ export async function executePrefix(
       const selectedNode = nodes.find(n => (n.id || n.attributes?.id) === selectedNodeId);
       const selectedEgg = validEggs.find(e => e.id === selectedEggId);
 
-      // Defer the interaction for server creation
+      // 延遲互動以建立伺服器
       await eggInteraction.deferUpdate();
 
-      // Create server (smart defaults handled in service)
+      // 建立伺服器（服務層自動處理預設值）
       const server = await pterodactylService.createServer({
         name,
         description,
@@ -496,23 +496,23 @@ export async function executePrefix(
         user: context.user.pterodactyl_user_id
       });
 
-      // Add to database
+      // 新增至資料庫
       (authService as any).db.addUserServer(message.author.id, server.uuid, server.name);
 
       const successEmbed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('✅ Server Created Successfully')
-        .setDescription(`Your server **${server.name}** has been created!`)
+        .setTitle('✅ 伺服器已成功建立')
+        .setDescription(`您的伺服器 **${server.name}** 已建立！`)
         .addFields(
-          { name: '🆔 Server ID', value: server.uuid, inline: true },
-          { name: '📊 Status', value: server.status || 'Installing', inline: true },
-          { name: '💾 Memory', value: `${server.limits.memory} MB`, inline: true },
-          { name: '💿 Disk', value: `${server.limits.disk} MB`, inline: true },
+          { name: '🆔 伺服器 ID', value: server.uuid, inline: true },
+          { name: '📊 狀態', value: server.status || '安裝中', inline: true },
+          { name: '💾 記憶體', value: `${server.limits.memory} MB`, inline: true },
+          { name: '💿 磁碟', value: `${server.limits.disk} MB`, inline: true },
           { name: '⚡ CPU', value: `${server.limits.cpu}%`, inline: true },
-          { name: '🌍 Node', value: selectedNode?.name || selectedNode?.attributes?.name || 'Unknown', inline: true },
-          { name: '🥚 Type', value: `${selectedEgg?.name} (${selectedEgg?.nest_name})`, inline: true }
+          { name: '🌍 節點', value: selectedNode?.name || selectedNode?.attributes?.name || '未知', inline: true },
+          { name: '🥚 類型', value: `${selectedEgg?.name} (${selectedEgg?.nest_name})`, inline: true }
         )
-        .setFooter({ text: 'Server is installing. This may take a few minutes. Startup commands are auto-configured.' })
+        .setFooter({ text: '伺服器正在安裝中，可能需要幾分鐘。啟動指令已自動設定。' })
         .setTimestamp();
 
       await eggInteraction.editReply({
@@ -520,15 +520,15 @@ export async function executePrefix(
         components: []
       });
 
-      Logger.info(`User ${message.author.tag} created server: ${server.name} (${server.uuid}) on node ${selectedNode?.name || selectedNode?.attributes?.name || 'Unknown'}`);
+      Logger.info(`使用者 ${message.author.tag} 已建立伺服器：${server.name} (${server.uuid})，節點：${selectedNode?.name || selectedNode?.attributes?.name || '未知'}`);
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       if (errorMessage.includes('time')) {
         const timeoutEmbed = new EmbedBuilder()
           .setColor('Orange')
-          .setTitle('⏰ Selection Timeout')
-          .setDescription('Server creation cancelled due to timeout.')
+          .setTitle('⏰ 選擇逾時')
+          .setDescription('已因逾時取消建立伺服器。')
           .setTimestamp();
 
         await nodeResponse.edit({
@@ -540,24 +540,24 @@ export async function executePrefix(
       }
     }
   } catch (error) {
-    Logger.error('Error in create-server command (prefix):', error);
+    Logger.error('create-server 指令（前綴）發生錯誤：', error);
     
-    let errorMessage = 'An error occurred while creating the server.';
-    let title = '❌ Error';
+    let errorMessage = '建立伺服器時發生錯誤。';
+    let title = '❌ 錯誤';
     
-    // Handle specific error types with prettier messages
+    // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
       if (error.message.includes('bind your account first')) {
-        title = '🔗 Account Not Bound';
-        errorMessage = 'You need to bind your Discord account to your Pterodactyl account first!\n\nUse `!bind <your_api_key>` to get started.';
+        title = '🔗 帳號尚未綁定';
+        errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `!bind <您的_api_key>` 開始綁定。';
       } else if (error.message.includes('Invalid API key')) {
-        title = '🔑 Invalid API Key';
-        errorMessage = 'Your API key appears to be invalid or expired. Please use `!bind` with a new API key.';
+        title = '🔑 無效的 API 金鑰';
+        errorMessage = '您的 API 金鑰似乎無效或已過期，請使用 `!bind` 重新綁定新的 API 金鑰。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
-        title = '🔌 Connection Error';
-        errorMessage = 'Unable to connect to the Pterodactyl panel. Please try again later.';
+        title = '🔌 連線錯誤';
+        errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else if (error.message.includes('Validation failed')) {
-        title = '⚠️ Invalid Server Configuration';
+        title = '⚠️ 伺服器設定無效';
         errorMessage = error.message;
       } else {
         errorMessage = error.message;
