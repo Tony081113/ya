@@ -11,10 +11,10 @@ import * as path from 'path';
 
 export const data = new SlashCommandBuilder()
   .setName('help')
-  .setDescription('Show all available commands and their descriptions')
+  .setDescription('顯示所有可用指令及其說明')
   .addStringOption(option =>
     option.setName('command')
-      .setDescription('Get detailed help for a specific command')
+      .setDescription('取得特定指令的詳細說明')
       .setRequired(false)
   );
 
@@ -28,20 +28,20 @@ export async function execute(
     const isAdmin = interaction.member ? authService.isAdmin(interaction.member as any) : false;
 
     if (specificCommand) {
-      // Show detailed help for specific command
+      // 顯示特定指令的詳細說明
       await showCommandDetails(interaction, specificCommand, isUserBound, isAdmin);
     } else {
-      // Show general help with all commands
+      // 顯示所有指令的一般說明
       await showGeneralHelp(interaction, isUserBound, isAdmin);
     }
 
   } catch (error) {
-    Logger.error('Error in help command:', error);
+    Logger.error('help 指令發生錯誤：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while loading help information.')
+      .setTitle('❌ 錯誤')
+      .setDescription('載入說明資訊時發生錯誤。')
       .setTimestamp();
 
     if (interaction.deferred) {
@@ -62,20 +62,20 @@ export async function executePrefix(
     const isAdmin = message.member ? authService.isAdmin(message.member as any) : false;
 
     if (specificCommand) {
-      // Show detailed help for specific command
+      // 顯示特定指令的詳細說明
       await showCommandDetailsPrefix(message, specificCommand, isUserBound, isAdmin);
     } else {
-      // Show general help with all commands
+      // 顯示所有指令的一般說明
       await showGeneralHelpPrefix(message, isUserBound, isAdmin);
     }
 
   } catch (error) {
-    Logger.error('Error in help command (prefix):', error);
+    Logger.error('help 指令發生錯誤（前綴）：', error);
     
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while loading help information.')
+      .setTitle('❌ 錯誤')
+      .setDescription('載入說明資訊時發生錯誤。')
       .setTimestamp();
 
     await message.reply({ 
@@ -92,14 +92,14 @@ async function getAvailableCommands(): Promise<CommandInfo[]> {
   try {
     const allFiles = fs.readdirSync(commandsDir);
     
-    // Use the same filtering logic as the main bot
+    // 使用與主機器人相同的過濾邏輯
     const isProduction = __filename.endsWith('.js');
     const files = allFiles.filter(file => {
       if (isProduction) {
-        // Only include .js files, exclude .d.ts and .js.map files
+        // 只包含 .js 檔案，排除 .d.ts 和 .js.map 檔案
         return file.endsWith('.js') && !file.includes('.d.') && !file.includes('.map');
       } else {
-        // Only include .ts files, exclude .d.ts files
+        // 只包含 .ts 檔案，排除 .d.ts 檔案
         return file.endsWith('.ts') && !file.includes('.d.');
       }
     });
@@ -107,11 +107,11 @@ async function getAvailableCommands(): Promise<CommandInfo[]> {
     for (const file of files) {
       const commandName = file.replace(/\.(js|ts)$/, '');
       
-      // Skip the help command itself to avoid recursion
+      // 跳過 help 指令本身以避免遞迴
       if (commandName === 'help') continue;
       
       try {
-        // Dynamically import the command module
+        // 動態匯入指令模組
         const commandModule = await import(path.join(commandsDir, file));
         
         if (commandModule.data) {
@@ -124,11 +124,11 @@ async function getAvailableCommands(): Promise<CommandInfo[]> {
           });
         }
       } catch (error) {
-        Logger.error(`Failed to load command ${commandName}:`, error);
+        Logger.error(`無法載入指令 ${commandName}：`, error);
       }
     }
   } catch (error) {
-    Logger.error('Failed to read commands directory:', error);
+    Logger.error('無法讀取指令目錄：', error);
   }
   
   return commands.sort((a, b) => a.name.localeCompare(b.name));
@@ -136,19 +136,19 @@ async function getAvailableCommands(): Promise<CommandInfo[]> {
 
 function getCommandCategory(commandName: string): string {
   const categories: { [key: string]: string } = {
-    'bind': 'Authentication',
-    'unbind': 'Authentication',
-    'status': 'Authentication',
-    'servers': 'Server Management',
-    'create-server': 'Server Management',
-    'delete-server': 'Server Management',
-    'power': 'Server Management',
-    'monitor': 'Server Management',
-    'ping': 'Utility',
-    'help': 'Utility'
+    'bind': '驗證',
+    'unbind': '驗證',
+    'status': '驗證',
+    'servers': '伺服器管理',
+    'create-server': '伺服器管理',
+    'delete-server': '伺服器管理',
+    'power': '伺服器管理',
+    'monitor': '伺服器管理',
+    'ping': '工具',
+    'help': '工具'
   };
   
-  return categories[commandName] || 'General';
+  return categories[commandName] || '一般';
 }
 
 async function showGeneralHelp(interaction: ChatInputCommandInteraction, isUserBound: boolean, isAdmin: boolean) {
@@ -157,11 +157,11 @@ async function showGeneralHelp(interaction: ChatInputCommandInteraction, isUserB
   
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('🤖 Bot Commands')
-    .setDescription('Available commands organized by category')
+    .setTitle('🤖 機器人指令')
+    .setDescription('依分類整理的可用指令')
     .setTimestamp();
 
-  // Add categories with clean format
+  // 以整潔格式加入分類
   for (const [category, categoryCommands] of Object.entries(categories)) {
     const commandList = categoryCommands.map(cmd => {
       return `\`/${cmd.name}\` - ${cmd.description}`;
@@ -174,9 +174,9 @@ async function showGeneralHelp(interaction: ChatInputCommandInteraction, isUserB
     });
   }
 
-  // Simple footer
+  // 簡單頁尾
   embed.setFooter({ 
-    text: `${commands.length} commands available` 
+    text: `${commands.length} 個可用指令` 
   });
 
   await interaction.editReply({ embeds: [embed] });
@@ -188,11 +188,11 @@ async function showGeneralHelpPrefix(message: Message, isUserBound: boolean, isA
   
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('🤖 Bot Commands')
-    .setDescription('Available commands organized by category')
+    .setTitle('🤖 機器人指令')
+    .setDescription('依分類整理的可用指令')
     .setTimestamp();
 
-  // Add categories with clean format
+  // 以整潔格式加入分類
   for (const [category, categoryCommands] of Object.entries(categories)) {
     const commandList = categoryCommands.map(cmd => {
       return `\`!${cmd.name}\` / \`/${cmd.name}\` - ${cmd.description}`;
@@ -205,9 +205,9 @@ async function showGeneralHelpPrefix(message: Message, isUserBound: boolean, isA
     });
   }
 
-  // Simple footer
+  // 簡單頁尾
   embed.setFooter({ 
-    text: `${commands.length} commands available` 
+    text: `${commands.length} 個可用指令` 
   });
 
   await message.reply({ 
@@ -223,10 +223,10 @@ async function showCommandDetails(interaction: ChatInputCommandInteraction, comm
   if (!command) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Command Not Found')
-      .setDescription(`Command \`${commandName}\` was not found.`)
+      .setTitle('❌ 找不到指令')
+      .setDescription(`找不到指令 \`${commandName}\`。`)
       .addFields({
-        name: '💡 Available Commands',
+        name: '💡 可用指令',
         value: commands.map(cmd => `\`${cmd.name}\``).join(', '),
         inline: false
       })
@@ -239,11 +239,11 @@ async function showCommandDetails(interaction: ChatInputCommandInteraction, comm
 
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle(`📖 Command: /${command.name}`)
+    .setTitle(`📖 指令：/${command.name}`)
     .setDescription(command.description)
     .addFields(
       {
-        name: '🏷️ Category',
+        name: '🏷️ 分類',
         value: command.category,
         inline: true
       }
@@ -251,12 +251,12 @@ async function showCommandDetails(interaction: ChatInputCommandInteraction, comm
 
   if (command.options && command.options.length > 0) {
     const optionsList = command.options.map((opt: any) => {
-      const required = opt.required ? '(Required)' : '(Optional)';
+      const required = opt.required ? '（必填）' : '（選填）';
       return `\`${opt.name}\` ${required} - ${opt.description}`;
     }).join('\n');
 
     embed.addFields({
-      name: '⚙️ Options',
+      name: '⚙️ 選項',
       value: optionsList,
       inline: false
     });
@@ -264,7 +264,7 @@ async function showCommandDetails(interaction: ChatInputCommandInteraction, comm
 
   if (detailedInfo.usage) {
     embed.addFields({
-      name: '💡 Usage Examples',
+      name: '💡 使用範例',
       value: detailedInfo.usage,
       inline: false
     });
@@ -272,7 +272,7 @@ async function showCommandDetails(interaction: ChatInputCommandInteraction, comm
 
   if (detailedInfo.notes) {
     embed.addFields({
-      name: '📝 Notes',
+      name: '📝 備註',
       value: detailedInfo.notes,
       inline: false
     });
@@ -289,10 +289,10 @@ async function showCommandDetailsPrefix(message: Message, commandName: string, i
   if (!command) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Command Not Found')
-      .setDescription(`Command \`${commandName}\` was not found.`)
+      .setTitle('❌ 找不到指令')
+      .setDescription(`找不到指令 \`${commandName}\`。`)
       .addFields({
-        name: '💡 Available Commands',
+        name: '💡 可用指令',
         value: commands.map(cmd => `\`${cmd.name}\``).join(', '),
         inline: false
       })
@@ -308,11 +308,11 @@ async function showCommandDetailsPrefix(message: Message, commandName: string, i
 
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle(`📖 Command: ${command.name}`)
+    .setTitle(`📖 指令：${command.name}`)
     .setDescription(command.description)
     .addFields(
       {
-        name: '🏷️ Category',
+        name: '🏷️ 分類',
         value: command.category,
         inline: true
       }
@@ -320,12 +320,12 @@ async function showCommandDetailsPrefix(message: Message, commandName: string, i
 
   if (command.options && command.options.length > 0) {
     const optionsList = command.options.map((opt: any) => {
-      const required = opt.required ? '(Required)' : '(Optional)';
+      const required = opt.required ? '（必填）' : '（選填）';
       return `\`${opt.name}\` ${required} - ${opt.description}`;
     }).join('\n');
 
     embed.addFields({
-      name: '⚙️ Options',
+      name: '⚙️ 選項',
       value: optionsList,
       inline: false
     });
@@ -333,7 +333,7 @@ async function showCommandDetailsPrefix(message: Message, commandName: string, i
 
   if (detailedInfo.usage) {
     embed.addFields({
-      name: '💡 Usage Examples',
+      name: '💡 使用範例',
       value: detailedInfo.usage,
       inline: false
     });
@@ -341,7 +341,7 @@ async function showCommandDetailsPrefix(message: Message, commandName: string, i
 
   if (detailedInfo.notes) {
     embed.addFields({
-      name: '📝 Notes',
+      name: '📝 備註',
       value: detailedInfo.notes,
       inline: false
     });
@@ -369,10 +369,10 @@ function groupCommandsByCategory(commands: CommandInfo[]): { [category: string]:
 
 function getCategoryEmoji(category: string): string {
   const emojis: { [key: string]: string } = {
-    'Authentication': '🔐',
-    'Server Management': '🖥️',
-    'Utility': '🛠️',
-    'General': '📋'
+    '驗證': '🔐',
+    '伺服器管理': '🖥️',
+    '工具': '🛠️',
+    '一般': '📋'
   };
   
   return emojis[category] || '📋';
@@ -382,39 +382,39 @@ function getCommandDetailedInfo(commandName: string): { usage?: string; notes?: 
   const details: { [key: string]: { usage?: string; notes?: string } } = {
     'bind': {
       usage: '`/bind method:"API Key Only" api_key:your_key`\n`!bind your_api_key_here`',
-      notes: 'Connects your Discord account to your Pterodactyl account. Only one Discord account can be bound per Pterodactyl account.'
+      notes: '將您的 Discord 帳號連結至 Pterodactyl 帳號。每個 Pterodactyl 帳號只能綁定一個 Discord 帳號。'
     },
     'servers': {
-      usage: '`/servers` or `!servers`',
-      notes: 'Shows all your servers with pagination. Click buttons to navigate between pages.'
+      usage: '`/servers` 或 `!servers`',
+      notes: '顯示所有伺服器並支援分頁。點擊按鈕可在頁面間切換。'
     },
     'create-server': {
-      usage: '`/create-server` or `!create-server`',
-      notes: 'Interactive server creation with node and egg selection. Automatically sets up smart startup commands.'
+      usage: '`/create-server` 或 `!create-server`',
+      notes: '互動式伺服器建立，可選擇節點與 egg。自動設定智慧啟動指令。'
     },
     'delete-server': {
-      usage: '`/delete-server server_id:server_name` or `!delete-server server_name`',
-      notes: 'Delete servers you own. Requires confirmation before deletion. Server data will be permanently lost.'
+      usage: '`/delete-server server_id:server_name` 或 `!delete-server server_name`',
+      notes: '刪除您擁有的伺服器。刪除前需確認。伺服器資料將永久遺失。'
     },
     'power': {
-      usage: '`/power action:start server_id:server_name` or `!power start server_name`',
-      notes: 'Available actions: start, stop, restart, kill. You can only control servers you own.'
+      usage: '`/power action:start server_id:server_name` 或 `!power start server_name`',
+      notes: '可用動作：start、stop、restart、kill。您只能控制自己擁有的伺服器。'
     },
     'monitor': {
-      usage: '`/monitor server_id:server_name` or `!monitor server_name`',
-      notes: 'Shows current resource usage (not real-time). Displays memory, CPU, disk, network I/O, and uptime.'
+      usage: '`/monitor server_id:server_name` 或 `!monitor server_name`',
+      notes: '顯示當前資源使用狀況（非即時）。包含記憶體、CPU、磁碟、網路 I/O 及運行時間。'
     },
     'status': {
-      usage: '`/status` or `!status`',
-      notes: 'Shows your current binding status and available commands based on your permissions.'
+      usage: '`/status` 或 `!status`',
+      notes: '顯示您目前的綁定狀態及根據權限可用的指令。'
     },
     'unbind': {
-      usage: '`/unbind` or `!unbind`',
-      notes: 'Requires confirmation. You will lose access to server management commands until you bind again.'
+      usage: '`/unbind` 或 `!unbind`',
+      notes: '需要確認。在重新綁定前，您將無法使用伺服器管理指令。'
     },
     'ping': {
-      usage: '`/ping` or `!ping`',
-      notes: 'Shows bot latency, uptime, and system information.'
+      usage: '`/ping` 或 `!ping`',
+      notes: '顯示機器人延遲、運行時間及系統資訊。'
     }
   };
   

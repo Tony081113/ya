@@ -14,7 +14,7 @@ import { Logger } from '../utils/logger';
 
 export const data = new SlashCommandBuilder()
   .setName('servers')
-  .setDescription('View your servers');
+  .setDescription('查看你的伺服器');
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -24,44 +24,44 @@ export async function execute(
   try {
     await interaction.deferReply();
 
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(interaction.user, interaction.member as any);
     
-    // Set user API key
-    pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);    // Get user servers
+    // 設定使用者 API 金鑰
+    pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);    // 取得使用者伺服器列表
     const servers = await pterodactylService.getUserServers();
 
     if (servers.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('📋 Your Servers')
-        .setDescription('You don\'t have any servers yet. Use `/create-server` to create one!')
+        .setTitle('📋 你的伺服器')
+        .setDescription('你目前沒有任何伺服器。使用 `/create-server` 來建立一個！')
         .addFields(
-          { name: 'Getting Started', value: 'Use `/create-server` to create a new server with custom specifications.', inline: false }
+          { name: '開始使用', value: '使用 `/create-server` 來建立一台具有自訂規格的新伺服器。', inline: false }
         )
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
       return;
-    }    // Show servers with pagination
+    }    // 以分頁方式顯示伺服器列表
     await showServersWithPagination(interaction, servers, 0);
   } catch (error) {
-    Logger.error('Error in servers command:', error);
+    Logger.error('servers 指令發生錯誤：', error);
     
-    let errorMessage = 'An error occurred while fetching your servers.';
-    let title = '❌ Error';
+    let errorMessage = '擷取伺服器時發生錯誤。';
+    let title = '❌ 錯誤';
     
-    // Handle specific error types with prettier messages
+    // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
       if (error.message.includes('bind your account first')) {
-        title = '🔗 Account Not Bound';
-        errorMessage = 'You need to bind your Discord account to your Pterodactyl account first!\n\nUse `/bind <your_api_key>` to get started.';
+        title = '🔗 帳號尚未綁定';
+        errorMessage = '你需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `/bind <your_api_key>` 開始綁定。';
       } else if (error.message.includes('Invalid API key')) {
-        title = '🔑 Invalid API Key';
-        errorMessage = 'Your API key appears to be invalid or expired. Please use `/bind` with a new API key.';
+        title = '🔑 無效的 API 金鑰';
+        errorMessage = '你的 API 金鑰似乎無效或已過期。請使用 `/bind` 重新綁定新的 API 金鑰。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
-        title = '🔌 Connection Error';
-        errorMessage = 'Unable to connect to the Pterodactyl panel. Please try again later.';
+        title = '🔌 連線錯誤';
+        errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else {
         errorMessage = error.message;
       }
@@ -88,20 +88,20 @@ export async function executePrefix(
   pterodactylService: PterodactylService
 ) {
   try {
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(message.author, message.member as any);
     
-    // Set user API key
-    pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);    // Get user servers
+    // 設定使用者 API 金鑰
+    pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);    // 取得使用者伺服器列表
     const servers = await pterodactylService.getUserServers();
 
     if (servers.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('📋 Your Servers')
-        .setDescription('You don\'t have any servers yet. Use `!create-server` to create one!')
+        .setTitle('📋 你的伺服器')
+        .setDescription('你目前沒有任何伺服器。使用 `!create-server` 來建立一個！')
         .addFields(
-          { name: 'Getting Started', value: 'Use `!create-server` to create a new server with custom specifications.', inline: false }
+          { name: '開始使用', value: '使用 `!create-server` 來建立一台具有自訂規格的新伺服器。', inline: false }
         )
         .setTimestamp();
 
@@ -110,25 +110,25 @@ export async function executePrefix(
         allowedMentions: { repliedUser: false }
       });
       return;
-    }    // Show servers with pagination
+    }    // 以分頁方式顯示伺服器列表
     await showServersWithPagination(message, servers, 0);
   } catch (error) {
-    Logger.error('Error in servers command (prefix):', error);
+    Logger.error('servers 指令發生錯誤（前綴模式）：', error);
     
-    let errorMessage = 'An error occurred while fetching your servers.';
-    let title = '❌ Error';
+    let errorMessage = '擷取伺服器時發生錯誤。';
+    let title = '❌ 錯誤';
     
-    // Handle specific error types with prettier messages
+    // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
       if (error.message.includes('bind your account first')) {
-        title = '🔗 Account Not Bound';
-        errorMessage = 'You need to bind your Discord account to your Pterodactyl account first!\n\nUse `!bind <your_api_key>` to get started.';
+        title = '🔗 帳號尚未綁定';
+        errorMessage = '你需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `!bind <your_api_key>` 開始綁定。';
       } else if (error.message.includes('Invalid API key')) {
-        title = '🔑 Invalid API Key';
-        errorMessage = 'Your API key appears to be invalid or expired. Please use `!bind` with a new API key.';
+        title = '🔑 無效的 API 金鑰';
+        errorMessage = '你的 API 金鑰似乎無效或已過期。請使用 `!bind` 重新綁定新的 API 金鑰。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
-        title = '🔌 Connection Error';
-        errorMessage = 'Unable to connect to the Pterodactyl panel. Please try again later.';
+        title = '🔌 連線錯誤';
+        errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else {
         errorMessage = error.message;
       }
@@ -154,38 +154,38 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
   const endIndex = startIndex + serversPerPage;
   const currentServers = servers.slice(startIndex, endIndex);
 
-  // Create embed with server list (not grid)
+  // 建立伺服器列表的 embed（非格狀排列）
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('🎮 Your Servers')
-    .setDescription(`**Total servers:** ${servers.length} | **Page ${page + 1} of ${totalPages}**\n\n${      currentServers.map((server: any, index: number) => {
+    .setTitle('🎮 你的伺服器')
+    .setDescription(`**伺服器總數：** ${servers.length} | **第 ${page + 1} 頁，共 ${totalPages} 頁**\n\n${      currentServers.map((server: any, index: number) => {
         const statusEmoji = getStatusEmoji(server.status);
         return `**${startIndex + index + 1}.** ${statusEmoji} **${server.name}**\n` +
-               `└ **Status:** ${server.status || 'Unknown'}\n` +
-               `└ **Resources:** ${formatServerResources(server.limits)}\n` +
-               `└ **UUID:** \`${server.uuid?.substring(0, 8) || 'N/A'}...\`\n`;
+               `└ **狀態：** ${server.status || '未知'}\n` +
+               `└ **資源：** ${formatServerResources(server.limits)}\n` +
+               `└ **UUID：** \`${server.uuid?.substring(0, 8) || 'N/A'}...\`\n`;
       }).join('\n')
     }`)
     .setTimestamp()
-    .setFooter({ text: `Showing ${currentServers.length} of ${servers.length} servers` });
-  // Create navigation buttons
+    .setFooter({ text: `顯示 ${currentServers.length} / ${servers.length} 台伺服器` });
+  // 建立分頁導覽按鈕
   const components: ActionRowBuilder<ButtonBuilder>[] = [];
   if (totalPages > 1) {
     const row = new ActionRowBuilder<ButtonBuilder>()
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`servers_prev_${page}`)
-          .setLabel('◀ Previous')
+          .setLabel('◀ 上一頁')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(page === 0),
         new ButtonBuilder()
           .setCustomId(`servers_page_${page}`)
-          .setLabel(`Page ${page + 1}/${totalPages}`)
+          .setLabel(`第 ${page + 1} / ${totalPages} 頁`)
           .setStyle(ButtonStyle.Primary)
           .setDisabled(true),
         new ButtonBuilder()
           .setCustomId(`servers_next_${page}`)
-          .setLabel('Next ▶')
+          .setLabel('下一頁 ▶')
           .setStyle(ButtonStyle.Secondary)
           .setDisabled(page === totalPages - 1)
       );
@@ -200,10 +200,10 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
       allowedMentions: { repliedUser: false }
     });
   } else {
-    return; // Invalid interaction/message type
+    return; // 無效的 interaction / message 類型
   }
 
-  // Handle pagination buttons
+  // 處理分頁按鈕
   if (totalPages > 1) {
     try {
       const targetResponse = response || (interactionOrMessage.fetchReply ? await interactionOrMessage.fetchReply() : null);
@@ -212,7 +212,7 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
       const collector = targetResponse.createMessageComponentCollector({
         componentType: ComponentType.Button,
         filter: (i: any) => i.user.id === (interactionOrMessage.user?.id || interactionOrMessage.author?.id) && i.customId.startsWith('servers_'),
-        time: 300000 // 5 minutes
+        time: 300000 // 5 分鐘
       });      collector.on('collect', async (buttonInteraction: any) => {
         const [, action, currentPage] = buttonInteraction.customId.split('_');
         let newPage = parseInt(currentPage);
@@ -223,24 +223,24 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
           newPage++;
         }        await buttonInteraction.deferUpdate();
         
-        // Create new embed and components for updated page (using same format as initial display)
+        // 為更新後的頁面建立新的 embed 和元件（與初始顯示格式相同）
         const startIndex = newPage * serversPerPage;
         const endIndex = Math.min(startIndex + serversPerPage, servers.length);
         const pageServers = servers.slice(startIndex, endIndex);
 
         const newEmbed = new EmbedBuilder()
           .setColor('Blue')
-          .setTitle('🎮 Your Servers')
-          .setDescription(`**Total servers:** ${servers.length} | **Page ${newPage + 1} of ${totalPages}**\n\n${            pageServers.map((server: any, index: number) => {
+          .setTitle('🎮 你的伺服器')
+          .setDescription(`**伺服器總數：** ${servers.length} | **第 ${newPage + 1} 頁，共 ${totalPages} 頁**\n\n${            pageServers.map((server: any, index: number) => {
               const statusEmoji = getStatusEmoji(server.status);
               return `**${startIndex + index + 1}.** ${statusEmoji} **${server.name}**\n` +
-                     `└ **Status:** ${server.status || 'Unknown'}\n` +
-                     `└ **Resources:** ${formatServerResources(server.limits)}\n` +
-                     `└ **UUID:** \`${server.uuid?.substring(0, 8) || 'N/A'}...\`\n`;
+                     `└ **狀態：** ${server.status || '未知'}\n` +
+                     `└ **資源：** ${formatServerResources(server.limits)}\n` +
+                     `└ **UUID：** \`${server.uuid?.substring(0, 8) || 'N/A'}...\`\n`;
             }).join('\n')
           }`)
           .setTimestamp()
-          .setFooter({ text: `Showing ${pageServers.length} of ${servers.length} servers` });
+          .setFooter({ text: `顯示 ${pageServers.length} / ${servers.length} 台伺服器` });
 
         const newComponents = [];
         if (totalPages > 1) {
@@ -248,17 +248,17 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
             .addComponents(
               new ButtonBuilder()
                 .setCustomId(`servers_prev_${newPage}`)
-                .setLabel('◀ Previous')
+                .setLabel('◀ 上一頁')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(newPage === 0),
               new ButtonBuilder()
                 .setCustomId(`servers_page_${newPage}`)
-                .setLabel(`Page ${newPage + 1}/${totalPages}`)
+                .setLabel(`第 ${newPage + 1} / ${totalPages} 頁`)
                 .setStyle(ButtonStyle.Primary)
                 .setDisabled(true),
               new ButtonBuilder()
                 .setCustomId(`servers_next_${newPage}`)
-                .setLabel('Next ▶')
+                .setLabel('下一頁 ▶')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(newPage === totalPages - 1)
             );
@@ -269,7 +269,7 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
       });
 
       collector.on('end', async () => {
-        // Disable buttons when collector ends
+        // 收集器結束時停用所有按鈕
         if (components.length > 0) {
           const disabledRow = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
@@ -283,12 +283,12 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
               await interactionOrMessage.editReply({ components: [disabledRow] });
             }
           } catch (error) {
-            // Ignore errors when editing expired interaction
+            // 忽略編輯已過期 interaction 時的錯誤
           }
         }
       });
     } catch (error) {
-      // Ignore errors related to interaction handling
+      // 忽略 interaction 處理相關錯誤
     }
   }
 }
@@ -315,7 +315,7 @@ function formatServerResources(limits: any): string {
     return '∞ RAM • ∞ Disk • ∞ CPU';
   }
 
-  // Format memory
+  // 格式化記憶體
   let memoryDisplay = '∞';
   if (limits.memory && limits.memory > 0) {
     if (limits.memory < 1024) {
@@ -326,7 +326,7 @@ function formatServerResources(limits: any): string {
     }
   }
 
-  // Format disk
+  // 格式化磁碟
   let diskDisplay = '∞';
   if (limits.disk && limits.disk > 0) {
     if (limits.disk < 1024) {
@@ -337,7 +337,7 @@ function formatServerResources(limits: any): string {
     }
   }
 
-  // Format CPU
+  // 格式化 CPU
   let cpuDisplay = '∞';
   if (limits.cpu && limits.cpu > 0) {
     cpuDisplay = `${limits.cpu}%`;

@@ -19,10 +19,10 @@ import { Logger } from './utils/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Load environment variables
+// 載入環境變數
 config();
 
-// Interfaces
+// 介面定義
 interface Command {
   data: any;
   execute: (interaction: ChatInputCommandInteraction, ...args: any[]) => Promise<void>;
@@ -54,15 +54,15 @@ class PterodactylBot {  private client: Client;
   }  private async loadCommands(): Promise<void> {
     const commandsPath = path.join(__dirname, 'commands');
     
-    // In production (compiled), only look for .js files (not .d.ts or .js.map files)
-    // In development (ts-node), look for .ts files (not .d.ts files)
+    // 在正式環境（已編譯）中，只尋找 .js 檔案（不含 .d.ts 或 .js.map）
+    // 在開發環境（ts-node）中，只尋找 .ts 檔案（不含 .d.ts）
     const isProduction = __filename.endsWith('.js');
     const commandFiles = fs.readdirSync(commandsPath).filter(file => {
       if (isProduction) {
-        // Only include .js files, exclude .d.ts and .js.map files
+        // 只包含 .js 檔案，排除 .d.ts 和 .js.map 檔案
         return file.endsWith('.js') && !file.includes('.d.') && !file.includes('.map');
       } else {
-        // Only include .ts files, exclude .d.ts files
+        // 只包含 .ts 檔案，排除 .d.ts 檔案
         return file.endsWith('.ts') && !file.includes('.d.');
       }
     });
@@ -74,12 +74,12 @@ class PterodactylBot {  private client: Client;
         
         if ('data' in command && 'execute' in command) {
           this.commands.set(command.data.name, command);
-          Logger.info(`Loaded command: ${command.data.name}`);
+          Logger.info(`已載入指令：${command.data.name}`);
         } else {
-          Logger.warn(`Command at ${filePath} is missing required "data" or "execute" property.`);
+          Logger.warn(`位於 ${filePath} 的指令缺少必要的 "data" 或 "execute" 屬性。`);
         }
       } catch (error) {
-        Logger.error(`Failed to load command ${file}:`, error);
+        Logger.error(`載入指令 ${file} 失敗：`, error);
       }
     }
   }
@@ -93,23 +93,23 @@ class PterodactylBot {  private client: Client;
     const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
 
     try {
-      Logger.info(`Started refreshing ${commands.length} application (/) commands.`);
+      Logger.info(`開始重新整理 ${commands.length} 個應用程式 (/) 指令。`);
 
       const data = await rest.put(
         Routes.applicationCommands(process.env.CLIENT_ID!),
         { body: commands },
       );
 
-      Logger.info(`Successfully reloaded ${(data as any).length} application (/) commands.`);
+      Logger.info(`已成功重新載入 ${(data as any).length} 個應用程式 (/) 指令。`);
     } catch (error) {
-      Logger.error('Error deploying commands:', error);
+      Logger.error('部署指令時發生錯誤：', error);
     }
   }  private setupEventHandlers(): void {
     this.client.once(Events.ClientReady, async (readyClient) => {
-      Logger.info(`Bot is ready! Logged in as ${readyClient.user.tag}`);
-      Logger.info(`Connected to ${readyClient.guilds.cache.size} guilds`);
+      Logger.info(`機器人已就緒！已以 ${readyClient.user.tag} 身份登入`);
+      Logger.info(`已連線至 ${readyClient.guilds.cache.size} 個伺服器`);
       
-      // Set bot presence after a small delay to ensure client is fully ready
+      // 稍作延遲後設定機器人狀態，確保客戶端已完全就緒
       setTimeout(async () => {
         await this.updateBotPresence();
       }, 1000);
@@ -130,11 +130,11 @@ class PterodactylBot {  private client: Client;
     });
 
     this.client.on(Events.Error, (error) => {
-      Logger.error('Discord client error:', error);
+      Logger.error('Discord 客戶端錯誤：', error);
     });
 
     this.client.on(Events.Warn, (warning) => {
-      Logger.warn('Discord client warning:', warning);
+      Logger.warn('Discord 客戶端警告：', warning);
     });
   }
 
@@ -142,17 +142,17 @@ class PterodactylBot {  private client: Client;
     const command = this.commands.get(interaction.commandName);
 
     if (!command) {
-      Logger.error(`No command matching ${interaction.commandName} was found.`);
+      Logger.error(`找不到符合 ${interaction.commandName} 的指令。`);
       return;
     }
 
     try {
       await command.execute(interaction, this.authService, this.pterodactylService);
     } catch (error) {
-      Logger.error(`Error executing command ${interaction.commandName}:`, error);
+      Logger.error(`執行指令 ${interaction.commandName} 時發生錯誤：`, error);
       
       const errorMessage = {
-        content: 'There was an error while executing this command!',
+        content: '執行此指令時發生錯誤！',
         ephemeral: true,
       };
 
@@ -179,54 +179,54 @@ class PterodactylBot {  private client: Client;
   }
   private async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {
     try {
-      const [action, subAction, serverUuid] = interaction.customId.split('_');      // Skip prefix and slash command buttons - they're handled by their respective commands
+      const [action, subAction, serverUuid] = interaction.customId.split('_');      // 略過前綴與斜線指令按鈕 — 由各自的指令處理
       if (action === 'prefix' || action === 'slash') {
         return;
       }      if (action === 'confirm' && subAction === 'delete') {
         await interaction.deferUpdate();
 
-        // Check if user is authenticated (no admin required - server ownership validated in command)
+        // 確認使用者已通過驗證（不需要管理員 — 伺服器所有權由指令驗證）
         const context = await this.authService.requireAuth(interaction.user, interaction.member as any);
         
-        // Set user API key to ensure they can only delete their own servers
+        // 設定使用者 API 金鑰，確保使用者只能刪除自己的伺服器
         this.pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
         
-        // Verify server ownership by checking if user can access it
+        // 透過確認使用者是否能存取來驗證伺服器所有權
         const userServers = await this.pterodactylService.getUserServers();
         const server = userServers.find(s => s.uuid === serverUuid);
         
         if (!server) {
           const embed = {
             color: 0xff0000,
-            title: '❌ Access Denied',
-            description: `You don't have permission to delete this server.`,
+            title: '❌ 存取被拒',
+            description: `您沒有權限刪除此伺服器。`,
             timestamp: new Date().toISOString(),
           };
           await interaction.editReply({ embeds: [embed], components: [] });
           return;
         }
         
-        // Delete the server
-        await this.pterodactylService.deleteServer(serverUuid);// Remove from database
+        // 刪除伺服器
+        await this.pterodactylService.deleteServer(serverUuid);// 從資料庫移除
         this.database.removeUserServer(interaction.user.id, serverUuid);
 
         const embed = {
           color: 0x00ff00,
-          title: '✅ Server Deleted Successfully',
-          description: `Server with UUID **${serverUuid}** has been permanently deleted.`,
+          title: '✅ 伺服器已成功刪除',
+          description: `UUID 為 **${serverUuid}** 的伺服器已永久刪除。`,
           timestamp: new Date().toISOString(),
         };
 
         await interaction.editReply({ embeds: [embed], components: [] });
-        Logger.info(`User ${interaction.user.tag} confirmed deletion of server: ${serverUuid}`);
+        Logger.info(`使用者 ${interaction.user.tag} 確認刪除伺服器：${serverUuid}`);
 
       } else if (action === 'cancel' && subAction === 'delete') {
         await interaction.deferUpdate();
 
         const embed = {
           color: 0xffa500,
-          title: '❌ Deletion Cancelled',
-          description: 'Server deletion has been cancelled.',
+          title: '❌ 刪除已取消',
+          description: '伺服器刪除操作已取消。',
           timestamp: new Date().toISOString(),
         };
 
@@ -234,11 +234,11 @@ class PterodactylBot {  private client: Client;
       }
 
     } catch (error) {
-      Logger.error('Error handling button interaction:', error);
+      Logger.error('處理按鈕互動時發生錯誤：', error);
         const errorEmbed = {
         color: 0xff0000,
-        title: '❌ Error',
-        description: error instanceof Error ? error.message : 'An error occurred while processing the action.',
+        title: '❌ 錯誤',
+        description: error instanceof Error ? error.message : '處理此操作時發生錯誤。',
         timestamp: new Date().toISOString(),
       };
 
@@ -251,12 +251,12 @@ class PterodactylBot {  private client: Client;
   }
 
   private async handlePrefixCommand(message: any): Promise<void> {
-    // Ignore messages from bots
+    // 忽略機器人的訊息
     if (message.author.bot) return;
 
     const prefix = process.env.PREFIX || '!';
 
-    // Check if message starts with prefix
+    // 檢查訊息是否以前綴開頭
     if (!message.content.startsWith(prefix)) return;
 
     const args = message.content.slice(prefix.length).trim().split(/ +/);
@@ -264,11 +264,11 @@ class PterodactylBot {  private client: Client;
 
     if (!commandName) return;
 
-    // Find command
+    // 尋找指令
     const command = this.commands.get(commandName);
     if (!command) return;
 
-    // Check if command has prefix support
+    // 檢查指令是否支援前綴
     if (!command.executePrefix) {
       const availableCommands = Array.from(this.commands.keys())
         .filter(name => this.commands.get(name)?.executePrefix)
@@ -276,7 +276,7 @@ class PterodactylBot {  private client: Client;
         .join(', ');
 
       await message.reply({
-        content: `❌ This command is only available as a slash command. Use \`/${commandName}\` instead.\n\n**Available prefix commands:** ${availableCommands || 'None'}`,
+        content: `❌ 此指令僅支援斜線指令形式，請改用 \`/${commandName}\`。\n\n**可用的前綴指令：** ${availableCommands || '無'}`,
         allowedMentions: { repliedUser: false }
       });
       return;
@@ -285,9 +285,9 @@ class PterodactylBot {  private client: Client;
     try {
       await command.executePrefix(message, args, this.authService, this.pterodactylService);
     } catch (error) {
-      Logger.error(`Error executing prefix command ${commandName}:`, error);
+      Logger.error(`執行前綴指令 ${commandName} 時發生錯誤：`, error);
       await message.reply({
-        content: '❌ There was an error while executing this command!',
+        content: '❌ 執行此指令時發生錯誤！',
         allowedMentions: { repliedUser: false }
       });
     }
@@ -306,66 +306,66 @@ class PterodactylBot {  private client: Client;
         status: 'online',
       });
 
-      Logger.info(`Bot presence set to "Playing Pterodactyl Panel | ${guildCount} server${guildCount !== 1 ? 's' : ''}"`);
+      Logger.info(`機器人狀態已設定為「正在遊玩 Pterodactyl Panel | ${guildCount} server${guildCount !== 1 ? 's' : ''}」`);
     } catch (error) {
-      Logger.error('Failed to update bot presence:', error);
+      Logger.error('更新機器人狀態失敗：', error);
     }
   }
 
   public async start(): Promise<void> {
     try {
-      // Validate environment variables
+      // 驗證環境變數
       if (!process.env.DISCORD_TOKEN) {
-        throw new Error('DISCORD_TOKEN is required');
+        throw new Error('DISCORD_TOKEN 為必填項目');
       }
       if (!process.env.CLIENT_ID) {
-        throw new Error('CLIENT_ID is required');
+        throw new Error('CLIENT_ID 為必填項目');
       }
       if (!process.env.PTERODACTYL_URL) {
-        throw new Error('PTERODACTYL_URL is required');
+        throw new Error('PTERODACTYL_URL 為必填項目');
       }
       if (!process.env.PTERODACTYL_API_KEY) {
-        throw new Error('PTERODACTYL_API_KEY is required');
+        throw new Error('PTERODACTYL_API_KEY 為必填項目');
       }
 
-      // Load and deploy commands
+      // 載入並部署指令
       await this.loadCommands();
       await this.deployCommands();
 
-      // Login to Discord
+      // 登入 Discord
       await this.client.login(process.env.DISCORD_TOKEN);
 
     } catch (error) {
-      Logger.error('Error starting bot:', error);
+      Logger.error('啟動機器人時發生錯誤：', error);
       process.exit(1);
     }
   }
 
   public async stop(): Promise<void> {
-    Logger.info('Shutting down bot...');
+    Logger.info('正在關閉機器人…');
     this.database.close();
     this.client.destroy();
   }
 }
 
-// Create and start the bot
+// 建立並啟動機器人
 const bot = new PterodactylBot();
 
-// Handle graceful shutdown
+// 處理優雅關閉
 process.on('SIGINT', async () => {
-  Logger.info('Received SIGINT, shutting down gracefully...');
+  Logger.info('收到 SIGINT，正在優雅地關閉…');
   await bot.stop();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
-  Logger.info('Received SIGTERM, shutting down gracefully...');
+  Logger.info('收到 SIGTERM，正在優雅地關閉…');
   await bot.stop();
   process.exit(0);
 });
 
-// Start the bot
+// 啟動機器人
 bot.start().catch((error) => {
-  Logger.error('Failed to start bot:', error);
+  Logger.error('啟動機器人失敗：', error);
   process.exit(1);
 });
