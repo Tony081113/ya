@@ -12,6 +12,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('delete-server')
@@ -67,7 +68,11 @@ export async function execute(
       // 顯示伺服器選單（僅限使用者自己的伺服器）
       await showServerSelection(interaction, context, pterodactylService, authService);
     }  } catch (error) {
-    Logger.error('delete-server 指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in delete-server command:', error);
+    } else {
+      Logger.error('Error in delete-server command:', error);
+    }
     
     let errorMessage = '刪除伺服器時發生錯誤。';
     let title = '❌ 錯誤';
@@ -527,7 +532,11 @@ export async function executePrefix(
       return;
     }
 
-    Logger.error('delete-server 指令（前綴）發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in delete-server command (prefix):', error);
+    } else {
+      Logger.error('Error in delete-server command (prefix):', error);
+    }
     
     const errorMessage = error instanceof Error ? error.message : '刪除伺服器時發生錯誤。';
     const embed = new EmbedBuilder()

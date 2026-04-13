@@ -1,6 +1,6 @@
 import { GuildMember, User } from 'discord.js';
 import { DatabaseConnection } from '../database/connection';
-import { BoundUser, CommandContext } from '../types';
+import { BoundUser, CommandContext, UserError } from '../types';
 
 export class AuthService {
   private db: DatabaseConnection;
@@ -53,7 +53,7 @@ export class AuthService {
   async requireAuth(user: User, member?: GuildMember): Promise<CommandContext> {
     const context = await this.createCommandContext(user, member);
     if (!context) {
-      throw new Error('你必須先綁定帳號！請使用 `/bind` 指令。');
+      throw new UserError('You must bind your account first! Use `/bind` command.');
     }
     return context;
   }
@@ -61,7 +61,7 @@ export class AuthService {
   async requireAdmin(user: User, member: GuildMember): Promise<CommandContext> {
     const context = await this.requireAuth(user, member);
     if (!context.isAdmin) {
-      throw new Error('你必須是管理員才能使用此指令。');
+      throw new UserError('You must be an administrator to use this command.');
     }
     return context;
   }

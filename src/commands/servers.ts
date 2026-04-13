@@ -11,6 +11,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('servers')
@@ -46,7 +47,11 @@ export async function execute(
     }    // 以分頁方式顯示伺服器列表
     await showServersWithPagination(interaction, servers, 0);
   } catch (error) {
-    Logger.error('servers 指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in servers command:', error);
+    } else {
+      Logger.error('Error in servers command:', error);
+    }
     
     let errorMessage = '擷取伺服器時發生錯誤。';
     let title = '❌ 錯誤';
@@ -113,7 +118,11 @@ export async function executePrefix(
     }    // 以分頁方式顯示伺服器列表
     await showServersWithPagination(message, servers, 0);
   } catch (error) {
-    Logger.error('servers 指令發生錯誤（前綴模式）：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in servers command (prefix):', error);
+    } else {
+      Logger.error('Error in servers command (prefix):', error);
+    }
     
     let errorMessage = '擷取伺服器時發生錯誤。';
     let title = '❌ 錯誤';

@@ -192,22 +192,63 @@ export class PterodactylService {
     }
   }
 
+  /** 取得單一 Egg 的詳細資訊（不含變數）*/
+  async getEgg(nestId: number, eggId: number): Promise<any> {
+    try {
+      const response = await this.client.get(`/nests/${nestId}/eggs/${eggId}`);
+      return response.data.attributes;
+    } catch (error) {
+      throw new Error(`Failed to fetch egg: ${error}`);
+    }
+  }
+
+  /** 在所有 Nest 中尋找指定 Egg ID，回傳 egg 物件（含 nest_id / nest_name）*/
+  async findEggById(eggId: number): Promise<any | null> {
+    try {
+      const eggs = await this.getEggs();
+      return eggs.find((e: any) => e.id === eggId) ?? null;
+    } catch {
+      return null;
+    }
+  }
+
   async createServer(options: ServerCreationOptions & { user: number }): Promise<PterodactylServer> {
     try {
-      // 從環境變數讀取固定的 Nest / Egg 設定
-      const nestId = parseInt(process.env.PTERO_NEST_ID || '1', 10);
-      const eggId  = parseInt(process.env.PTERO_EGG_ID  || '1', 10);
+      // .env で強制された値を優先し、なければ options から取得
+      // If PTERO_* env vars are set they take priority; otherwise use options values
+      const forcedNestId = process.env.PTERO_NEST_ID ? parseInt(process.env.PTERO_NEST_ID, 10) : undefined;
+      const forcedEggId  = process.env.PTERO_EGG_ID  ? parseInt(process.env.PTERO_EGG_ID,  10) : undefined;
+
+      const nestId = forcedNestId ?? options.nestId;
+      const eggId  = forcedEggId  ?? options.eggId;
+
+      if (!nestId || !eggId) {
+        throw new Error('未指定 Egg：請在指令中選擇一個 Egg，或在 .env 設定 PTERO_NEST_ID / PTERO_EGG_ID。');
+      }
 
       // 1. 先取得該節點第一個可用的 Allocation（同時拿到 Port 號碼）
       const allocation = await this.getFirstAvailableAllocation(options.nodeId);
 
-      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令）
+      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令與環境變數預設值）
       const eggResponse = await this.client.get(
         `/nests/${nestId}/eggs/${eggId}?include=variables`
       );
       const egg = eggResponse.data.attributes;
 
-      // 3. 組裝建立伺服器所需的 Payload
+      // 3. 從 Egg 的變數定義中取出預設值，作為 environment 的基底
+      //    避免因漏填 required 欄位而被 Pterodactyl 拒絕（422）
+      const eggVariables: any[] = egg.relationships?.variables?.data ?? [];
+      const baseEnvironment: Record<string, string> = {};
+      for (const v of eggVariables) {
+        const attr = v.attributes ?? v;
+        const key = attr.env_variable ?? attr.name;
+        if (key) {
+          baseEnvironment[key] = attr.default_value ?? '';
+        }
+      }
+
+      // 4. 組裝建立伺服器所需的 Payload
+      //    將自訂覆蓋值合併到 Egg 預設值之上，確保所有 required 欄位都存在
       const serverData = {
         name: options.name,
         description: options.description || '',
@@ -232,13 +273,12 @@ export class PterodactylService {
           default: allocation.id,
         },
         environment: {
-          // Python 固定設定
+          // Egg 預設值（涵蓋所有 required 欄位）
+          ...baseEnvironment,
+          // 自訂覆蓋值
           STARTUP_CMD: 'pip install -r requirements.txt',
           SECOND_CMD: 'python bot.py',
           QUERY_PORT: allocation.port.toString(),
-          // 常見選填欄位，避免 422 錯誤
-          SERVER_VERSION: 'latest',
-          QUERY_PROTOCOLS: 'tcp',
         },
       };
 

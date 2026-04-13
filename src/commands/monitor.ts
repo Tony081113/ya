@@ -10,6 +10,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('monitor')
@@ -42,7 +43,11 @@ export async function execute(
     }
 
   } catch (error) {
-    Logger.error('monitor 指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in monitor command:', error);
+    } else {
+      Logger.error('Error in monitor command:', error);
+    }
     
     let errorMessage = '監控伺服器資源時發生錯誤。';
     let title = '❌ 錯誤';
@@ -343,7 +348,11 @@ export async function executePrefix(
     await executePrefixMonitoring(message, serverId, context, pterodactylService);
 
   } catch (error) {
-    Logger.error('monitor 指令發生錯誤（前綴）：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in monitor command (prefix):', error);
+    } else {
+      Logger.error('Error in monitor command (prefix):', error);
+    }
     
     const errorMessage = error instanceof Error ? error.message : '監控伺服器資源時發生錯誤。';
     const embed = new EmbedBuilder()

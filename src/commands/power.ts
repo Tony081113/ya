@@ -10,6 +10,7 @@ import {
 import { AuthService } from '../services/auth';
 import { PterodactylService } from '../services/pterodactyl';
 import { Logger } from '../utils/logger';
+import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('power')
@@ -57,7 +58,11 @@ export async function execute(
     }
 
   } catch (error) {
-    Logger.error('power 指令發生錯誤：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in power command:', error);
+    } else {
+      Logger.error('Error in power command:', error);
+    }
     
     let errorMessage = '管理伺服器電源時發生錯誤。';
     let title = '❌ 錯誤';
@@ -458,7 +463,11 @@ export async function executePrefix(
     }
 
   } catch (error) {
-    Logger.error('power 指令發生錯誤（前綴）：', error);
+    if (error instanceof UserError) {
+      Logger.warn('Error in power command (prefix):', error);
+    } else {
+      Logger.error('Error in power command (prefix):', error);
+    }
     
     const errorMessage = error instanceof Error ? error.message : '管理伺服器電源時發生錯誤。';
     const embed = new EmbedBuilder()

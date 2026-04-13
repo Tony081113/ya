@@ -39,11 +39,21 @@ export interface ServerCreationOptions {
   memory: number;
   disk: number;
   cpu: number;
-  /** 要部署的節點 ID（Allocation 與 Egg 設定由系統自動決定） */
   nodeId: number;
+  /** 使用者指定的 Nest ID（若 .env 設定 PTERO_NEST_ID 則以 .env 為準） */
+  nestId?: number;
+  /** 使用者指定的 Egg ID（若 .env 設定 PTERO_EGG_ID 則以 .env 為準） */
+  eggId?: number;
 }
 
 export interface CommandContext {
   user: BoundUser;
   isAdmin: boolean;
+}
+
+export class UserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'UserError';
+  }
 }
