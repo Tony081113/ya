@@ -201,13 +201,26 @@ export class PterodactylService {
       // 1. 先取得該節點第一個可用的 Allocation（同時拿到 Port 號碼）
       const allocation = await this.getFirstAvailableAllocation(options.nodeId);
 
-      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令）
+      // 2. 取得 Egg 詳細資訊（含 docker_image、startup 指令與環境變數預設值）
       const eggResponse = await this.client.get(
         `/nests/${nestId}/eggs/${eggId}?include=variables`
       );
       const egg = eggResponse.data.attributes;
 
-      // 3. 組裝建立伺服器所需的 Payload
+      // 3. 從 Egg 的變數定義中取出預設值，作為 environment 的基底
+      //    避免因漏填 required 欄位而被 Pterodactyl 拒絕（422）
+      const eggVariables: any[] = egg.relationships?.variables?.data ?? [];
+      const baseEnvironment: Record<string, string> = {};
+      for (const v of eggVariables) {
+        const attr = v.attributes ?? v;
+        const key = attr.env_variable ?? attr.name;
+        if (key) {
+          baseEnvironment[key] = attr.default_value ?? '';
+        }
+      }
+
+      // 4. 組裝建立伺服器所需的 Payload
+      //    將自訂覆蓋值合併到 Egg 預設值之上，確保所有 required 欄位都存在
       const serverData = {
         name: options.name,
         description: options.description || '',
@@ -232,13 +245,12 @@ export class PterodactylService {
           default: allocation.id,
         },
         environment: {
-          // Python 固定設定
+          // Egg 預設值（涵蓋所有 required 欄位）
+          ...baseEnvironment,
+          // 自訂覆蓋值
           STARTUP_CMD: 'pip install -r requirements.txt',
           SECOND_CMD: 'python bot.py',
           QUERY_PORT: allocation.port.toString(),
-          // 常見選填欄位，避免 422 錯誤
-          SERVER_VERSION: 'latest',
-          QUERY_PROTOCOLS: 'tcp',
         },
       };
 
