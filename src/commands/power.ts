@@ -14,21 +14,21 @@ import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('power')
-  .setDescription('Control the power state of your servers')
+  .setDescription('控制您伺服器的電源狀態')
   .addStringOption(option =>
     option.setName('server_id')
-      .setDescription('Server UUID or name (optional - will show selection if not provided)')
+      .setDescription('伺服器 UUID 或名稱（選填 - 若未提供將顯示選擇選單）')
       .setRequired(false)
   )
   .addStringOption(option =>
     option.setName('action')
-      .setDescription('Power action to perform')
+      .setDescription('要執行的電源動作')
       .setRequired(false)
       .addChoices(
-        { name: '🟢 Start', value: 'start' },
-        { name: '🔴 Stop', value: 'stop' },
-        { name: '🔄 Restart', value: 'restart' },
-        { name: '⚡ Kill (Force Stop)', value: 'kill' }
+        { name: '🟢 啟動', value: 'start' },
+        { name: '🔴 停止', value: 'stop' },
+        { name: '🔄 重啟', value: 'restart' },
+        { name: '⚡ 強制停止', value: 'kill' }
       )
   );
 
@@ -40,20 +40,20 @@ export async function execute(
   try {
     await interaction.deferReply();
 
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(interaction.user, interaction.member as any);
     
     const serverId = interaction.options.getString('server_id');
     const action = interaction.options.getString('action');
 
     if (serverId && action) {
-      // Direct power action
+      // 直接電源動作
       await executePowerAction(interaction, serverId, action, context, pterodactylService);
     } else if (serverId && !action) {
-      // Show action selection for specific server
+      // 顯示特定伺服器的動作選擇
       await showActionSelection(interaction, serverId, context, pterodactylService);
     } else {
-      // Show server selection
+      // 顯示伺服器選擇
       await showServerSelection(interaction, context, pterodactylService);
     }
 
@@ -64,20 +64,20 @@ export async function execute(
       Logger.error('Error in power command:', error);
     }
     
-    let errorMessage = 'An error occurred while managing server power.';
-    let title = '❌ Error';
+    let errorMessage = '管理伺服器電源時發生錯誤。';
+    let title = '❌ 錯誤';
     
-    // Handle specific error types
+    // 處理特定錯誤類型
     if (error instanceof Error) {
       if (error.message.includes('bind your account first')) {
-        title = '🔗 Account Not Bound';
-        errorMessage = 'You need to bind your Discord account to your Pterodactyl account first!\n\nUse `/bind` to get started.';
+        title = '🔗 帳號未綁定';
+        errorMessage = '您需要先將 Discord 帳號綁定至 Pterodactyl 帳號！\n\n請使用 `/bind` 開始設定。';
       } else if (error.message.includes('Invalid API key')) {
-        title = '🔑 Invalid API Key';
-        errorMessage = 'Your API key appears to be invalid or expired. Please use `/bind` with a new API key.';
+        title = '🔑 無效的 API 金鑰';
+        errorMessage = '您的 API 金鑰似乎無效或已過期。請使用 `/bind` 重新設定新的 API 金鑰。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
-        title = '🔌 Connection Error';
-        errorMessage = 'Unable to connect to the Pterodactyl panel. Please try again later.';
+        title = '🔌 連線錯誤';
+        errorMessage = '無法連線至 Pterodactyl 面板。請稍後再試。';
       } else {
         errorMessage = error.message;
       }
@@ -104,27 +104,27 @@ async function executePowerAction(
   context: any,
   pterodactylService: PterodactylService
 ) {
-  // Set user API key
+  // 設定使用者 API 金鑰
   pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
   
-  // Get user's servers and verify ownership
+  // 取得使用者伺服器並驗證所有權
   const userServers = await pterodactylService.getUserServers();
   const server = userServers.find(s => 
     s.uuid === serverId || 
     s.id?.toString() === serverId ||
-    s.uuid.startsWith(serverId) || // Partial UUID match
-    s.name.toLowerCase() === serverId.toLowerCase() // Name match
+    s.uuid.startsWith(serverId) || // 部分 UUID 比對
+    s.name.toLowerCase() === serverId.toLowerCase() // 名稱比對
   );
 
   if (!server) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Server Not Found')
-      .setDescription(`Server with identifier \`${serverId}\` was not found or doesn't belong to you.`)
+      .setTitle('❌ 找不到伺服器')
+      .setDescription(`找不到識別碼為 \`${serverId}\` 的伺服器，或該伺服器不屬於您。`)
       .addFields(
         { 
-          name: '💡 Tip', 
-          value: 'Use `/power` without parameters to see your available servers.',
+          name: '💡 提示', 
+          value: '請不帶參數使用 `/power` 查看您的可用伺服器。',
           inline: false 
         }
       )
@@ -133,11 +133,11 @@ async function executePowerAction(
     await interaction.editReply({ embeds: [embed] });
     return;
   }
-  // Execute power action
+  // 執行電源動作
   const processingEmbed = new EmbedBuilder()
     .setColor('Yellow')
-    .setTitle('⏳ Processing...')
-    .setDescription(`Executing ${getActionEmoji(action)} **${getActionName(action)}** on server **${server.name}**...`)
+    .setTitle('⏳ 處理中...')
+    .setDescription(`正在對伺服器 **${server.name}** 執行 ${getActionEmoji(action)} **${getActionName(action)}**...`)
     .setTimestamp();
 
   await interaction.editReply({ embeds: [processingEmbed] });
@@ -145,35 +145,35 @@ async function executePowerAction(
   try {
     await pterodactylService.sendPowerAction(server.uuid, action as 'start' | 'stop' | 'restart' | 'kill');
 
-    // Get updated server status
+    // 取得更新後的伺服器狀態
     const updatedServer = await pterodactylService.getServerDetails(server.uuid);
     
     const successEmbed = new EmbedBuilder()
       .setColor('Green')
-      .setTitle('✅ Power Action Completed')
-      .setDescription(`Successfully executed **${getActionName(action)}** on server **${server.name}**.`)
+      .setTitle('✅ 電源動作已完成')
+      .setDescription(`已成功對伺服器 **${server.name}** 執行 **${getActionName(action)}**。`)
       .addFields(
-        { name: '🏷️ Server Name', value: server.name, inline: true },
-        { name: '📊 Status', value: getStatusEmoji(updatedServer.status) + ' ' + updatedServer.status, inline: true },
-        { name: '⚡ Action', value: `${getActionEmoji(action)} ${getActionName(action)}`, inline: true }
+        { name: '🏷️ 伺服器名稱', value: server.name, inline: true },
+        { name: '📊 狀態', value: getStatusEmoji(updatedServer.status) + ' ' + updatedServer.status, inline: true },
+        { name: '⚡ 動作', value: `${getActionEmoji(action)} ${getActionName(action)}`, inline: true }
       )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [successEmbed] });
 
-    Logger.info(`User ${interaction.user.tag} executed ${action} on server: ${server.name} (${server.uuid})`);
+    Logger.info(`使用者 ${interaction.user.tag} 對伺服器執行了 ${action}：${server.name} (${server.uuid})`);
 
   } catch (error) {
-    Logger.error('Error executing power action:', error);
+    Logger.error('執行電源動作時發生錯誤：', error);
     
     const errorEmbed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Power Action Failed')
-      .setDescription(`Failed to execute **${getActionName(action)}** on server **${server.name}**.`)
+      .setTitle('❌ 電源動作失敗')
+      .setDescription(`無法對伺服器 **${server.name}** 執行 **${getActionName(action)}**。`)
       .addFields(
         { 
-          name: '🔍 Error Details', 
-          value: error instanceof Error ? error.message : 'Unknown error occurred',
+          name: '🔍 錯誤詳情', 
+          value: error instanceof Error ? error.message : '發生未知錯誤',
           inline: false 
         }
       )
@@ -189,10 +189,10 @@ async function showActionSelection(
   context: any,
   pterodactylService: PterodactylService
 ) {
-  // Set user API key
+  // 設定使用者 API 金鑰
   pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
   
-  // Get user's servers and verify ownership
+  // 取得使用者伺服器並驗證所有權
   const userServers = await pterodactylService.getUserServers();
   const server = userServers.find(s => 
     s.uuid === serverId || 
@@ -204,12 +204,12 @@ async function showActionSelection(
   if (!server) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Server Not Found')
-      .setDescription(`Server with identifier \`${serverId}\` was not found or doesn't belong to you.`)
+      .setTitle('❌ 找不到伺服器')
+      .setDescription(`找不到識別碼為 \`${serverId}\` 的伺服器，或該伺服器不屬於您。`)
       .addFields(
         { 
-          name: '💡 Tip', 
-          value: 'Use `/power` without parameters to see your available servers.',
+          name: '💡 提示', 
+          value: '請不帶參數使用 `/power` 查看您的可用伺服器。',
           inline: false 
         }
       )
@@ -219,32 +219,32 @@ async function showActionSelection(
     return;
   }
 
-  // Get current server status
+  // 取得當前伺服器狀態
   const serverDetails = await pterodactylService.getServerDetails(server.uuid);
 
-  // Create action selection menu
+  // 建立動作選擇選單
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('select_power_action')
-    .setPlaceholder('Choose a power action')
+    .setPlaceholder('選擇電源動作')
     .addOptions([
       {
-        label: '🟢 Start Server',
-        description: 'Start the server if it\'s stopped',
+        label: '🟢 啟動伺服器',
+        description: '若伺服器已停止，則將其啟動',
         value: `start:${server.uuid}`,
       },
       {
-        label: '🔴 Stop Server',
-        description: 'Gracefully stop the server',
+        label: '🔴 停止伺服器',
+        description: '正常停止伺服器',
         value: `stop:${server.uuid}`,
       },
       {
-        label: '🔄 Restart Server',
-        description: 'Restart the server',
+        label: '🔄 重啟伺服器',
+        description: '重啟伺服器',
         value: `restart:${server.uuid}`,
       },
       {
-        label: '⚡ Kill Server',
-        description: 'Force stop the server immediately',
+        label: '⚡ 強制停止伺服器',
+        description: '立即強制停止伺服器',
         value: `kill:${server.uuid}`,
       }
     ]);
@@ -253,11 +253,11 @@ async function showActionSelection(
 
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('⚡ Server Power Control')
-    .setDescription(`Select a power action for server **${server.name}**:`)
+    .setTitle('⚡ 伺服器電源控制')
+    .setDescription(`請為伺服器 **${server.name}** 選擇電源動作：`)
     .addFields(
-      { name: '🏷️ Server Name', value: server.name, inline: true },
-      { name: '📊 Current Status', value: getStatusEmoji(serverDetails.status) + ' ' + serverDetails.status, inline: true },
+      { name: '🏷️ 伺服器名稱', value: server.name, inline: true },
+      { name: '📊 當前狀態', value: getStatusEmoji(serverDetails.status) + ' ' + serverDetails.status, inline: true },
       { name: '🔗 UUID', value: server.uuid.substring(0, 8) + '...', inline: true }
     )
     .setTimestamp();
@@ -267,7 +267,7 @@ async function showActionSelection(
     components: [row]
   });
 
-  // Wait for selection
+  // 等待選擇
   try {
     const selectInteraction = await response.awaitMessageComponent({
       componentType: ComponentType.StringSelect,
@@ -285,8 +285,8 @@ async function showActionSelection(
     if (errorMessage.includes('time')) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⏰ Selection Timeout')
-        .setDescription('Power action selection cancelled due to timeout.')
+        .setTitle('⏰ 選擇逾時')
+        .setDescription('電源動作選擇因逾時已取消。')
         .setTimestamp();
 
       await interaction.editReply({
@@ -304,31 +304,31 @@ async function showServerSelection(
   context: any,
   pterodactylService: PterodactylService
 ) {
-  // Set user API key
+  // 設定使用者 API 金鑰
   pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
 
-  // Get user servers
+  // 取得使用者伺服器
   const servers = await pterodactylService.getUserServers();
 
   if (servers.length === 0) {
     const embed = new EmbedBuilder()
       .setColor('Blue')
-      .setTitle('📋 No Servers Found')
-      .setDescription('You don\'t have any servers to manage.')
+      .setTitle('📋 找不到伺服器')
+      .setDescription('您沒有任何可管理的伺服器。')
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
     return;
   }
 
-  // Create select menu for servers
+  // 為伺服器建立選擇選單
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('select_server_power')
-    .setPlaceholder('Choose a server to manage')
+    .setPlaceholder('選擇要管理的伺服器')
     .addOptions(
       servers.slice(0, 25).map(server => ({
         label: server.name,
-        description: `Status: ${server.status} | UUID: ${server.uuid.substring(0, 8)}...`,
+        description: `狀態：${server.status} | UUID：${server.uuid.substring(0, 8)}...`,
         value: server.uuid,
       }))
     );
@@ -337,12 +337,12 @@ async function showServerSelection(
 
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('⚡ Server Power Management')
-    .setDescription('Select a server to manage its power state:')
+    .setTitle('⚡ 伺服器電源管理')
+    .setDescription('選擇伺服器以管理其電源狀態：')
     .addFields(
       servers.slice(0, 10).map(server => ({
         name: server.name,
-        value: `**Status:** ${getStatusEmoji(server.status)} ${server.status}\n**UUID:** \`${server.uuid}\``,
+        value: `**狀態：** ${getStatusEmoji(server.status)} ${server.status}\n**UUID：** \`${server.uuid}\``,
         inline: true
       }))
     )
@@ -353,7 +353,7 @@ async function showServerSelection(
     components: [row]
   });
 
-  // Wait for selection
+  // 等待選擇
   try {
     const selectInteraction = await response.awaitMessageComponent({
       componentType: ComponentType.StringSelect,
@@ -371,8 +371,8 @@ async function showServerSelection(
     if (errorMessage.includes('time')) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⏰ Selection Timeout')
-        .setDescription('Server selection cancelled due to timeout.')
+        .setTitle('⏰ 選擇逾時')
+        .setDescription('伺服器選擇因逾時已取消。')
         .setTimestamp();
 
       await interaction.editReply({
@@ -392,28 +392,28 @@ export async function executePrefix(
   pterodactylService: PterodactylService
 ) {
   try {
-    // Check if user is authenticated
+    // 檢查使用者是否已驗證
     const context = await authService.requireAuth(message.author, message.member as any);
     
     if (args.length === 0) {
-      // Show usage information
+      // 顯示用法資訊
       const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('⚡ Server Power Management')
-        .setDescription('Control the power state of your servers.')
+        .setTitle('⚡ 伺服器電源管理')
+        .setDescription('控制您伺服器的電源狀態。')
         .addFields(
           { 
-            name: 'Usage', 
+            name: '用法', 
             value: '`!power <server_id> <action>`\nor\n`!power <server_id>` (to select action)\nor\n`!power` (to select server)',
             inline: false 
           },
           { 
-            name: 'Available Actions', 
-            value: '• `start` - 🟢 Start the server\n• `stop` - 🔴 Stop the server\n• `restart` - 🔄 Restart the server\n• `kill` - ⚡ Force stop the server',
+            name: '可用動作', 
+            value: '• `start` - 🟢 啟動伺服器\n• `stop` - 🔴 停止伺服器\n• `restart` - 🔄 重啟伺服器\n• `kill` - ⚡ 強制停止伺服器',
             inline: false 
           },
           { 
-            name: 'Examples', 
+            name: '範例', 
             value: '`!power MyServer start`\n`!power 12345678 restart`\n`!power MyServer` (shows action menu)',
             inline: false 
           }
@@ -428,24 +428,24 @@ export async function executePrefix(
     }
 
     if (args.length === 1) {
-      // Server ID provided, show action selection
+      // 已提供伺服器 ID，顯示動作選擇
       const serverId = args[0];
       await executePrefixActionSelection(message, serverId, context, pterodactylService);
     } else if (args.length >= 2) {
-      // Both server ID and action provided
+      // 已提供伺服器 ID 和動作
       const serverId = args[0];
       const action = args[1].toLowerCase();
       
-      // Validate action
+      // 驗證動作
       const validActions = ['start', 'stop', 'restart', 'kill'];
       if (!validActions.includes(action)) {
         const embed = new EmbedBuilder()
           .setColor('Red')
-          .setTitle('❌ Invalid Action')
-          .setDescription(`Invalid power action: \`${action}\``)
+          .setTitle('❌ 無效的動作')
+          .setDescription(`無效的電源動作：\`${action}\``)
           .addFields(
             { 
-              name: 'Valid Actions', 
+              name: '有效動作', 
               value: validActions.map(a => `• \`${a}\` - ${getActionEmoji(a)} ${getActionName(a)}`).join('\n'),
               inline: false 
             }
@@ -469,10 +469,10 @@ export async function executePrefix(
       Logger.error('Error in power command (prefix):', error);
     }
     
-    const errorMessage = error instanceof Error ? error.message : 'An error occurred while managing server power.';
+    const errorMessage = error instanceof Error ? error.message : '管理伺服器電源時發生錯誤。';
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
+      .setTitle('❌ 錯誤')
       .setDescription(errorMessage)
       .setTimestamp();
 
@@ -490,10 +490,10 @@ async function executePrefixPowerAction(
   context: any,
   pterodactylService: PterodactylService
 ) {
-  // Set user API key
+  // 設定使用者 API 金鑰
   pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
   
-  // Get user's servers and verify ownership
+  // 取得使用者伺服器並驗證所有權
   const userServers = await pterodactylService.getUserServers();
   const server = userServers.find(s => 
     s.uuid === serverId || 
@@ -505,12 +505,12 @@ async function executePrefixPowerAction(
   if (!server) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Server Not Found')
-      .setDescription(`Server with identifier \`${serverId}\` was not found or doesn't belong to you.`)
+      .setTitle('❌ 找不到伺服器')
+      .setDescription(`找不到識別碼為 \`${serverId}\` 的伺服器，或該伺服器不屬於您。`)
       .addFields(
         { 
-          name: '💡 Tip', 
-          value: 'Use `!power` without parameters to see your available servers, or use `!servers` to list all your servers.',
+          name: '💡 提示', 
+          value: '請不帶參數使用 `!power` 查看您的可用伺服器，或使用 `!servers` 列出所有伺服器。',
           inline: false 
         }
       )
@@ -523,11 +523,11 @@ async function executePrefixPowerAction(
     return;
   }
 
-  // Execute power action
+  // 執行電源動作
   const processingEmbed = new EmbedBuilder()
     .setColor('Yellow')
-    .setTitle('⏳ Processing...')
-    .setDescription(`Executing ${getActionEmoji(action)} **${getActionName(action)}** on server **${server.name}**...`)
+    .setTitle('⏳ 處理中...')
+    .setDescription(`正在對伺服器 **${server.name}** 執行 ${getActionEmoji(action)} **${getActionName(action)}**...`)
     .setTimestamp();
   const processingMessage = await message.reply({ 
     embeds: [processingEmbed],
@@ -537,35 +537,35 @@ async function executePrefixPowerAction(
   try {
     await pterodactylService.sendPowerAction(server.uuid, action as 'start' | 'stop' | 'restart' | 'kill');
 
-    // Get updated server status
+    // 取得更新後的伺服器狀態
     const updatedServer = await pterodactylService.getServerDetails(server.uuid);
     
     const successEmbed = new EmbedBuilder()
       .setColor('Green')
-      .setTitle('✅ Power Action Completed')
-      .setDescription(`Successfully executed **${getActionName(action)}** on server **${server.name}**.`)
+      .setTitle('✅ 電源動作已完成')
+      .setDescription(`已成功對伺服器 **${server.name}** 執行 **${getActionName(action)}**。`)
       .addFields(
-        { name: '🏷️ Server Name', value: server.name, inline: true },
-        { name: '📊 Status', value: getStatusEmoji(updatedServer.status) + ' ' + updatedServer.status, inline: true },
-        { name: '⚡ Action', value: `${getActionEmoji(action)} ${getActionName(action)}`, inline: true }
+        { name: '🏷️ 伺服器名稱', value: server.name, inline: true },
+        { name: '📊 狀態', value: getStatusEmoji(updatedServer.status) + ' ' + updatedServer.status, inline: true },
+        { name: '⚡ 動作', value: `${getActionEmoji(action)} ${getActionName(action)}`, inline: true }
       )
       .setTimestamp();
 
     await processingMessage.edit({ embeds: [successEmbed] });
 
-    Logger.info(`User ${message.author.tag} executed ${action} on server: ${server.name} (${server.uuid})`);
+    Logger.info(`使用者 ${message.author.tag} 對伺服器執行了 ${action}：${server.name} (${server.uuid})`);
 
   } catch (error) {
-    Logger.error('Error executing power action:', error);
+    Logger.error('執行電源動作時發生錯誤：', error);
     
     const errorEmbed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Power Action Failed')
-      .setDescription(`Failed to execute **${getActionName(action)}** on server **${server.name}**.`)
+      .setTitle('❌ 電源動作失敗')
+      .setDescription(`無法對伺服器 **${server.name}** 執行 **${getActionName(action)}**。`)
       .addFields(
         { 
-          name: '🔍 Error Details', 
-          value: error instanceof Error ? error.message : 'Unknown error occurred',
+          name: '🔍 錯誤詳情', 
+          value: error instanceof Error ? error.message : '發生未知錯誤',
           inline: false 
         }
       )
@@ -581,10 +581,10 @@ async function executePrefixActionSelection(
   context: any,
   pterodactylService: PterodactylService
 ) {
-  // Set user API key
+  // 設定使用者 API 金鑰
   pterodactylService.setUserApiKey(context.user.pterodactyl_api_key);
   
-  // Get user's servers and verify ownership
+  // 取得使用者伺服器並驗證所有權
   const userServers = await pterodactylService.getUserServers();
   const server = userServers.find(s => 
     s.uuid === serverId || 
@@ -596,12 +596,12 @@ async function executePrefixActionSelection(
   if (!server) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Server Not Found')
-      .setDescription(`Server with identifier \`${serverId}\` was not found or doesn't belong to you.`)
+      .setTitle('❌ 找不到伺服器')
+      .setDescription(`找不到識別碼為 \`${serverId}\` 的伺服器，或該伺服器不屬於您。`)
       .addFields(
         { 
-          name: '💡 Tip', 
-          value: 'Use `!power` without parameters to see your available servers, or use `!servers` to list all your servers.',
+          name: '💡 提示', 
+          value: '請不帶參數使用 `!power` 查看您的可用伺服器，或使用 `!servers` 列出所有伺服器。',
           inline: false 
         }
       )
@@ -614,25 +614,25 @@ async function executePrefixActionSelection(
     return;
   }
 
-  // Get current server status
+  // 取得當前伺服器狀態
   const serverDetails = await pterodactylService.getServerDetails(server.uuid);
 
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('⚡ Server Power Control')
-    .setDescription(`Select a power action for server **${server.name}** by replying with the action:`)
+    .setTitle('⚡ 伺服器電源控制')
+    .setDescription(`請回覆動作名稱以為伺服器 **${server.name}** 選擇電源動作：`)
     .addFields(
-      { name: '🏷️ Server Name', value: server.name, inline: true },
-      { name: '📊 Current Status', value: getStatusEmoji(serverDetails.status) + ' ' + serverDetails.status, inline: true },
+      { name: '🏷️ 伺服器名稱', value: server.name, inline: true },
+      { name: '📊 當前狀態', value: getStatusEmoji(serverDetails.status) + ' ' + serverDetails.status, inline: true },
       { name: '🔗 UUID', value: server.uuid.substring(0, 8) + '...', inline: true },
       { 
-        name: 'Available Actions', 
-        value: '• `start` - 🟢 Start the server\n• `stop` - 🔴 Stop the server\n• `restart` - 🔄 Restart the server\n• `kill` - ⚡ Force stop the server',
+        name: '可用動作', 
+        value: '• `start` - 🟢 啟動伺服器\n• `stop` - 🔴 停止伺服器\n• `restart` - 🔄 重啟伺服器\n• `kill` - ⚡ 強制停止伺服器',
         inline: false 
       },
       { 
-        name: 'Usage', 
-        value: `\`!power ${serverId} <action>\`\nExample: \`!power ${serverId} start\``,
+        name: '用法', 
+        value: `\`!power ${serverId} <action>\`\n範例：\`!power ${serverId} start\``,
         inline: false 
       }
     )
@@ -644,7 +644,7 @@ async function executePrefixActionSelection(
   });
 }
 
-// Utility functions
+// 工具函式
 function getActionEmoji(action: string): string {
   switch (action) {
     case 'start': return '🟢';
@@ -657,11 +657,11 @@ function getActionEmoji(action: string): string {
 
 function getActionName(action: string): string {
   switch (action) {
-    case 'start': return 'Start';
-    case 'stop': return 'Stop';
-    case 'restart': return 'Restart';
-    case 'kill': return 'Kill (Force Stop)';
-    default: return 'Unknown';
+    case 'start': return '啟動';
+    case 'stop': return '停止';
+    case 'restart': return '重啟';
+    case 'kill': return '強制停止';
+    default: return '未知';
   }
 }
 

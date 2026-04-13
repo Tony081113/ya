@@ -8,7 +8,7 @@ import { AuthService } from '../services/auth';
 
 export const data = new SlashCommandBuilder()
   .setName('status')
-  .setDescription('Check your account binding status');
+  .setDescription('查看您的帳號綁定狀態');
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -22,29 +22,29 @@ export async function execute(
     if (boundUser) {
       const embed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('✅ Account Status')
-        .setDescription('Your Discord account is bound to a Pterodactyl account.')
+        .setTitle('✅ 帳號狀態')
+        .setDescription('您的 Discord 帳號已綁定到 Pterodactyl 帳號。')
         .addFields(
-          { name: 'Pterodactyl User ID', value: boundUser.pterodactyl_user_id.toString(), inline: true },
-          { name: 'Bound Since', value: new Date(boundUser.bound_at).toLocaleDateString(), inline: true },
-          { name: 'Available Commands', value: '`/servers` - Manage servers\n`/create-server` - Create new server\n`/power` - Control server power\n`/monitor` - Monitor resources\n`/help` - Show all commands\n`/unbind` - Unbind account', inline: false }
+          { name: 'Pterodactyl 使用者 ID', value: boundUser.pterodactyl_user_id.toString(), inline: true },
+          { name: '綁定日期', value: new Date(boundUser.bound_at).toLocaleDateString(), inline: true },
+          { name: '可用指令', value: '`/servers` - 管理伺服器\n`/create-server` - 建立新伺服器\n`/power` - 控制伺服器電源\n`/monitor` - 監控資源\n`/help` - 顯示所有指令\n`/unbind` - 解除帳號綁定', inline: false }
         )
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
     } else {      const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Status')
-        .setDescription('Your Discord account is not bound to any Pterodactyl account.')
+        .setTitle('⚠️ 帳號狀態')
+        .setDescription('您的 Discord 帳號尚未綁定到任何 Pterodactyl 帳號。')
         .addFields(
           { 
-            name: '🔗 How to Bind Your Account', 
-            value: '**Slash Command (Recommended):**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**Prefix Command:**\n`!bind your_api_key_here`\n\nOnly your API key is needed - no user ID required!', 
+            name: '🔗 如何綁定您的帳號', 
+            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**前綴指令：**\n`!bind your_api_key_here`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
             inline: false 
           },
           {
-            name: '🔑 Getting Your API Key',
-            value: '1. Go to your Pterodactyl panel\n2. Account → API Credentials\n3. Create new API key\n4. Copy and use in bind command',
+            name: '🔑 取得您的 API 金鑰',
+            value: '1. 前往您的 Pterodactyl 面板\n2. 帳號 → API 憑證\n3. 建立新的 API 金鑰\n4. 複製並在 bind 指令中使用',
             inline: false
           }
         )
@@ -56,8 +56,8 @@ export async function execute(
   } catch (error) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while checking your status.')
+      .setTitle('❌ 錯誤')
+      .setDescription('查看狀態時發生錯誤。')
       .setTimestamp();
 
     if (interaction.deferred) {
@@ -79,12 +79,12 @@ export async function executePrefix(
     if (boundUser) {
       const embed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle('✅ Account Status')
-        .setDescription('Your Discord account is bound to a Pterodactyl account.')
+        .setTitle('✅ 帳號狀態')
+        .setDescription('您的 Discord 帳號已綁定到 Pterodactyl 帳號。')
         .addFields(
-          { name: 'Pterodactyl User ID', value: boundUser.pterodactyl_user_id.toString(), inline: true },
-          { name: 'Bound Since', value: new Date(boundUser.bound_at).toLocaleDateString(), inline: true },
-          { name: 'Available Commands', value: '`/servers` or `!servers` - Manage servers\n`/create-server` - Create new server\n`/power` - Control server power\n`/monitor` - Monitor resources\n`/help` or `!help` - Show all commands\n`/unbind` or `!unbind` - Unbind account', inline: false }
+          { name: 'Pterodactyl 使用者 ID', value: boundUser.pterodactyl_user_id.toString(), inline: true },
+          { name: '綁定日期', value: new Date(boundUser.bound_at).toLocaleDateString(), inline: true },
+          { name: '可用指令', value: '`/servers` 或 `!servers` - 管理伺服器\n`/create-server` - 建立新伺服器\n`/power` - 控制伺服器電源\n`/monitor` - 監控資源\n`/help` 或 `!help` - 顯示所有指令\n`/unbind` 或 `!unbind` - 解除帳號綁定', inline: false }
         )        .setTimestamp();
 
       await message.reply({ 
@@ -93,17 +93,17 @@ export async function executePrefix(
       });
     } else {const embed = new EmbedBuilder()
         .setColor('Orange')
-        .setTitle('⚠️ Account Status')
-        .setDescription('Your Discord account is not bound to any Pterodactyl account.')
+        .setTitle('⚠️ 帳號狀態')
+        .setDescription('您的 Discord 帳號尚未綁定到任何 Pterodactyl 帳號。')
         .addFields(
           { 
-            name: '🔗 How to Bind Your Account', 
-            value: '**Slash Command (Recommended):**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**Prefix Command:**\n`!bind your_api_key_here`\n\nOnly your API key is needed - no user ID required!', 
+            name: '🔗 如何綁定您的帳號', 
+            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**前綴指令：**\n`!bind your_api_key_here`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
             inline: false 
           },
           {
-            name: '🔑 Getting Your API Key',
-            value: '1. Go to your Pterodactyl panel\n2. Account → API Credentials\n3. Create new API key\n4. Copy and use in bind command',
+            name: '🔑 取得您的 API 金鑰',
+            value: '1. 前往您的 Pterodactyl 面板\n2. 帳號 → API 憑證\n3. 建立新的 API 金鑰\n4. 複製並在 bind 指令中使用',
             inline: false          }
         )
         .setTimestamp();
@@ -117,8 +117,8 @@ export async function executePrefix(
   } catch (error) {
     const embed = new EmbedBuilder()
       .setColor('Red')
-      .setTitle('❌ Error')
-      .setDescription('An error occurred while checking your status.')
+      .setTitle('❌ 錯誤')
+      .setDescription('查看狀態時發生錯誤。')
       .setTimestamp();
 
     await message.reply({ 

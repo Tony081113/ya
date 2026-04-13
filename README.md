@@ -1,5 +1,7 @@
 # Pterodactyl Discord Bot
 
+**Language / 語言**: English | [繁體中文](README.zh-TW.md)
+
 A powerful Discord bot that integrates with Pterodactyl Panel to provide comprehensive server management capabilities directly from Discord. Built with Discord.js v14 and TypeScript.
 
 ## Features
