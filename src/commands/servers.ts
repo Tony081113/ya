@@ -15,7 +15,7 @@ import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('servers')
-  .setDescription('查看你的伺服器');
+  .setDescription('查看您的伺服器');
 
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -35,8 +35,8 @@ export async function execute(
     if (servers.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('📋 你的伺服器')
-        .setDescription('你目前沒有任何伺服器。使用 `/create-server` 來建立一個！')
+        .setTitle('📋 您的伺服器')
+        .setDescription('您目前沒有任何伺服器。使用 `/create-server` 來建立一個！')
         .addFields(
           { name: '開始使用', value: '使用 `/create-server` 來建立一台具有自訂規格的新伺服器。', inline: false }
         )
@@ -48,9 +48,9 @@ export async function execute(
     await showServersWithPagination(interaction, servers, 0);
   } catch (error) {
     if (error instanceof UserError) {
-      Logger.warn('Error in servers command:', error);
+      Logger.warn('servers 指令使用者錯誤：', error);
     } else {
-      Logger.error('Error in servers command:', error);
+      Logger.error('servers 指令發生錯誤：', error);
     }
     
     let errorMessage = '擷取伺服器時發生錯誤。';
@@ -58,13 +58,13 @@ export async function execute(
     
     // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title = '🔗 帳號尚未綁定';
-        errorMessage = '你需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `/bind <your_api_key>` 開始綁定。';
-      } else if (error.message.includes('Invalid API key')) {
+        errorMessage = '您需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `/bind <您的 API 金鑰>` 開始綁定。';
+      } else if (error.message.includes('API 金鑰無效')) {
         title = '🔑 無效的 API 金鑰';
-        errorMessage = '你的 API 金鑰似乎無效或已過期。請使用 `/bind` 重新綁定新的 API 金鑰。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+        errorMessage = '您的 API 金鑰似乎無效或已過期。請使用 `/bind` 重新綁定新的 API 金鑰。';
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else {
@@ -103,8 +103,8 @@ export async function executePrefix(
     if (servers.length === 0) {
       const embed = new EmbedBuilder()
         .setColor('Blue')
-        .setTitle('📋 你的伺服器')
-        .setDescription('你目前沒有任何伺服器。使用 `!create-server` 來建立一個！')
+        .setTitle('📋 您的伺服器')
+        .setDescription('您目前沒有任何伺服器。使用 `!create-server` 來建立一個！')
         .addFields(
           { name: '開始使用', value: '使用 `!create-server` 來建立一台具有自訂規格的新伺服器。', inline: false }
         )
@@ -119,9 +119,9 @@ export async function executePrefix(
     await showServersWithPagination(message, servers, 0);
   } catch (error) {
     if (error instanceof UserError) {
-      Logger.warn('Error in servers command (prefix):', error);
+      Logger.warn('servers 指令使用者錯誤（前綴）：', error);
     } else {
-      Logger.error('Error in servers command (prefix):', error);
+      Logger.error('servers 指令發生錯誤（前綴）：', error);
     }
     
     let errorMessage = '擷取伺服器時發生錯誤。';
@@ -129,13 +129,13 @@ export async function executePrefix(
     
     // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title = '🔗 帳號尚未綁定';
-        errorMessage = '你需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `!bind <your_api_key>` 開始綁定。';
-      } else if (error.message.includes('Invalid API key')) {
+        errorMessage = '您需要先將 Discord 帳號綁定到 Pterodactyl 帳號！\n\n請使用 `!bind <您的 API 金鑰>` 開始綁定。';
+      } else if (error.message.includes('API 金鑰無效')) {
         title = '🔑 無效的 API 金鑰';
-        errorMessage = '你的 API 金鑰似乎無效或已過期。請使用 `!bind` 重新綁定新的 API 金鑰。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+        errorMessage = '您的 API 金鑰似乎無效或已過期。請使用 `!bind` 重新綁定新的 API 金鑰。';
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else {
@@ -166,7 +166,7 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
   // 建立伺服器列表的 embed（非格狀排列）
   const embed = new EmbedBuilder()
     .setColor('Blue')
-    .setTitle('🎮 你的伺服器')
+    .setTitle('🎮 您的伺服器')
     .setDescription(`**伺服器總數：** ${servers.length} | **第 ${page + 1} 頁，共 ${totalPages} 頁**\n\n${      currentServers.map((server: any, index: number) => {
         const statusEmoji = getStatusEmoji(server.status);
         return `**${startIndex + index + 1}.** ${statusEmoji} **${server.name}**\n` +
@@ -239,7 +239,7 @@ async function showServersWithPagination(interactionOrMessage: any, servers: any
 
         const newEmbed = new EmbedBuilder()
           .setColor('Blue')
-          .setTitle('🎮 你的伺服器')
+          .setTitle('🎮 您的伺服器')
           .setDescription(`**伺服器總數：** ${servers.length} | **第 ${newPage + 1} 頁，共 ${totalPages} 頁**\n\n${            pageServers.map((server: any, index: number) => {
               const statusEmoji = getStatusEmoji(server.status);
               return `**${startIndex + index + 1}.** ${statusEmoji} **${server.name}**\n` +

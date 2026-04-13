@@ -39,7 +39,7 @@ export async function execute(
         .addFields(
           { 
             name: '🔗 如何綁定您的帳號', 
-            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**前綴指令：**\n`!bind your_api_key_here`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
+            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:您的 API 金鑰`\n\n**前綴指令：**\n`!bind 您的 API 金鑰`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
             inline: false 
           },
           {
@@ -98,7 +98,7 @@ export async function executePrefix(
         .addFields(
           { 
             name: '🔗 如何綁定您的帳號', 
-            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:your_key_here`\n\n**前綴指令：**\n`!bind your_api_key_here`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
+            value: '**斜線指令（推薦）：**\n`/bind method:"API Key Only" api_key:您的 API 金鑰`\n\n**前綴指令：**\n`!bind 您的 API 金鑰`\n\n只需提供您的 API 金鑰，不需要使用者 ID！', 
             inline: false 
           },
           {

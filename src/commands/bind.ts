@@ -289,7 +289,7 @@ export async function executePrefix(
         .addFields(
           { 
             name: '用法選項：', 
-            value: '• `!bind <api_key>` - 僅使用 API 金鑰綁定（推薦）\n• `!bind <api_key> email <your_email>` - 使用電子郵件驗證綁定\n• `!bind <api_key> username <your_username>` - 使用使用者名稱驗證綁定',
+            value: '• `!bind <api_key>` - 僅使用 API 金鑰綁定（推薦）\n• `!bind <api_key> email <您的電子郵件>` - 使用電子郵件驗證綁定\n• `!bind <api_key> username <您的使用者名稱>` - 使用使用者名稱驗證綁定',
             inline: false 
           },
           { 

@@ -381,7 +381,7 @@ function getCategoryEmoji(category: string): string {
 function getCommandDetailedInfo(commandName: string): { usage?: string; notes?: string } {
   const details: { [key: string]: { usage?: string; notes?: string } } = {
     'bind': {
-      usage: '`/bind method:"API Key Only" api_key:your_key`\n`!bind your_api_key_here`',
+      usage: '`/bind method:"API Key Only" api_key:您的 API 金鑰`\n`!bind 您的 API 金鑰`',
       notes: '將您的 Discord 帳號連結至 Pterodactyl 帳號。每個 Pterodactyl 帳號只能綁定一個 Discord 帳號。'
     },
     'servers': {
@@ -393,15 +393,15 @@ function getCommandDetailedInfo(commandName: string): { usage?: string; notes?: 
       notes: '互動式伺服器建立，可選擇節點與 egg。自動設定智慧啟動指令。'
     },
     'delete-server': {
-      usage: '`/delete-server server_id:server_name` 或 `!delete-server server_name`',
+      usage: '`/delete-server server_id:伺服器名稱` 或 `!delete-server 伺服器名稱`',
       notes: '刪除您擁有的伺服器。刪除前需確認。伺服器資料將永久遺失。'
     },
     'power': {
-      usage: '`/power action:start server_id:server_name` 或 `!power start server_name`',
+      usage: '`/power action:start server_id:伺服器名稱` 或 `!power start 伺服器名稱`',
       notes: '可用動作：start、stop、restart、kill。您只能控制自己擁有的伺服器。'
     },
     'monitor': {
-      usage: '`/monitor server_id:server_name` 或 `!monitor server_name`',
+      usage: '`/monitor server_id:伺服器名稱` 或 `!monitor 伺服器名稱`',
       notes: '顯示當前資源使用狀況（非即時）。包含記憶體、CPU、磁碟、網路 I/O 及運行時間。'
     },
     'status': {
