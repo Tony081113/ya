@@ -174,7 +174,7 @@ class PterodactylBot {  private client: Client;
     try {
       await command.autocomplete(interaction, this.pterodactylService);
     } catch (error) {
-      Logger.error(`Error handling autocomplete for ${interaction.commandName}:`, error);
+      Logger.error(`處理 ${interaction.commandName} 自動補全時發生錯誤：`, error);
     }
   }
   private async handleButtonInteraction(interaction: ButtonInteraction): Promise<void> {

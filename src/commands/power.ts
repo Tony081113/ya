@@ -59,9 +59,9 @@ export async function execute(
 
   } catch (error) {
     if (error instanceof UserError) {
-      Logger.warn('Error in power command:', error);
+      Logger.warn('power 指令使用者錯誤：', error);
     } else {
-      Logger.error('Error in power command:', error);
+      Logger.error('power 指令發生錯誤：', error);
     }
     
     let errorMessage = '管理伺服器電源時發生錯誤。';
@@ -69,13 +69,13 @@ export async function execute(
     
     // 處理特定錯誤類型
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title = '🔗 帳號未綁定';
         errorMessage = '您需要先將 Discord 帳號綁定至 Pterodactyl 帳號！\n\n請使用 `/bind` 開始設定。';
-      } else if (error.message.includes('Invalid API key')) {
+      } else if (error.message.includes('API 金鑰無效')) {
         title = '🔑 無效的 API 金鑰';
         errorMessage = '您的 API 金鑰似乎無效或已過期。請使用 `/bind` 重新設定新的 API 金鑰。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板。請稍後再試。';
       } else {
@@ -281,7 +281,7 @@ async function showActionSelection(
     await executePowerAction(interaction, serverUuid, action, context, pterodactylService);
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤';
     if (errorMessage.includes('time')) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
@@ -367,7 +367,7 @@ async function showServerSelection(
     await showActionSelection(interaction, selectedServerUuid, context, pterodactylService);
 
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤';
     if (errorMessage.includes('time')) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
@@ -404,7 +404,7 @@ export async function executePrefix(
         .addFields(
           { 
             name: '用法', 
-            value: '`!power <server_id> <action>`\nor\n`!power <server_id>` (to select action)\nor\n`!power` (to select server)',
+            value: '`!power <伺服器_ID> <動作>`\n或\n`!power <伺服器_ID>`（選擇動作）\n或\n`!power`（選擇伺服器）',
             inline: false 
           },
           { 
@@ -414,7 +414,7 @@ export async function executePrefix(
           },
           { 
             name: '範例', 
-            value: '`!power MyServer start`\n`!power 12345678 restart`\n`!power MyServer` (shows action menu)',
+            value: '`!power MyServer start`\n`!power 12345678 restart`\n`!power MyServer`（顯示動作選單）',
             inline: false 
           }
         )
@@ -464,9 +464,9 @@ export async function executePrefix(
 
   } catch (error) {
     if (error instanceof UserError) {
-      Logger.warn('Error in power command (prefix):', error);
+      Logger.warn('power 指令使用者錯誤（前綴）：', error);
     } else {
-      Logger.error('Error in power command (prefix):', error);
+      Logger.error('power 指令發生錯誤（前綴）：', error);
     }
     
     const errorMessage = error instanceof Error ? error.message : '管理伺服器電源時發生錯誤。';

@@ -261,13 +261,13 @@ export async function execute(
     let errorMessage = '建立伺服器時發生錯誤，請稍後再試。';
 
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title        = '🔗 尚未綁定帳號';
         errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `/bind <您的 API 金鑰>` 開始綁定。';
-      } else if (error.message.includes('Invalid API key')) {
+      } else if (error.message.includes('API 金鑰無效')) {
         title        = '🔑 API 金鑰無效';
         errorMessage = '您的 API 金鑰無效或已過期，請使用 `/bind` 重新設定。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title        = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else if (error.message.includes('已無可用的 Port') || error.message.includes('無法取得節點')) {
@@ -479,13 +479,13 @@ export async function executePrefix(
     let errorMessage = '建立伺服器時發生錯誤，請稍後再試。';
 
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title        = '🔗 尚未綁定帳號';
         errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `!bind <您的 API 金鑰>` 開始綁定。';
-      } else if (error.message.includes('Invalid API key')) {
+      } else if (error.message.includes('API 金鑰無效')) {
         title        = '🔑 API 金鑰無效';
         errorMessage = '您的 API 金鑰無效或已過期，請使用 `!bind` 重新設定。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title        = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
       } else if (error.message.includes('已無可用的 Port') || error.message.includes('無法取得節點')) {

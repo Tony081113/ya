@@ -69,9 +69,9 @@ export async function execute(
       await showServerSelection(interaction, context, pterodactylService, authService);
     }  } catch (error) {
     if (error instanceof UserError) {
-      Logger.warn('Error in delete-server command:', error);
+      Logger.warn('delete-server 指令使用者錯誤：', error);
     } else {
-      Logger.error('Error in delete-server command:', error);
+      Logger.error('delete-server 指令發生錯誤：', error);
     }
     
     let errorMessage = '刪除伺服器時發生錯誤。';
@@ -79,16 +79,16 @@ export async function execute(
     
     // 針對特定錯誤類型顯示更友善的訊息
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
+      if (error.message.includes('必須先綁定帳號')) {
         title = '🔗 帳號尚未綁定';
-        errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `/bind <您的_api_key>` 開始綁定。';
-      } else if (error.message.includes('Invalid API key')) {
+        errorMessage = '您需要先將 Discord 帳號與 Pterodactyl 帳號綁定！\n\n請使用 `/bind <您的 API 金鑰>` 開始綁定。';
+      } else if (error.message.includes('API 金鑰無效')) {
         title = '🔑 無效的 API 金鑰';
         errorMessage = '您的 API 金鑰似乎無效或已過期，請使用 `/bind` 重新綁定新的 API 金鑰。';
-      } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
+      } else if (error.message.includes('連線被拒絕') || error.message.includes('ECONNREFUSED')) {
         title = '🔌 連線錯誤';
         errorMessage = '無法連線至 Pterodactyl 面板，請稍後再試。';
-      } else if (error.message.includes('not found')) {
+      } else if (error.message.includes('找不到識別碼為')) {
         title = '🔍 找不到伺服器';
         errorMessage = error.message;
       } else {
@@ -191,7 +191,7 @@ async function showServerSelection(
     await selectInteraction.deferUpdate();
     await showSlashConfirmation(interaction, selectedServer, pterodactylService, authService);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤';
     if (errorMessage === 'Collector received no interactions before ending with reason: time') {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
@@ -296,7 +296,7 @@ async function showSlashConfirmation(
     Logger.info(`使用者 ${interaction.user.tag} 已刪除伺服器：${server.name} (${server.uuid})`);
 
   } catch (interactionError) {
-    const errorMessage = interactionError instanceof Error ? interactionError.message : 'Unknown error';
+    const errorMessage = interactionError instanceof Error ? interactionError.message : '發生未知錯誤';
     if (errorMessage.includes('time')) {
       const timeoutEmbed = new EmbedBuilder()
         .setColor('Orange')
@@ -348,7 +348,7 @@ async function handleServerDeletion(
     Logger.info(`使用者 ${interaction.user.tag} 已刪除伺服器：${serverName || serverId}`);
   } catch (error) {
     Logger.error('刪除伺服器時發生錯誤：', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage = error instanceof Error ? error.message : '發生未知錯誤';
     const embed = new EmbedBuilder()
       .setColor('Red')
       .setTitle('❌ 刪除失敗')
@@ -513,7 +513,7 @@ export async function executePrefix(
       Logger.info(`使用者 ${message.author.tag} 已刪除伺服器：${server.name} (${server.uuid})`);
 
     } catch (interactionError) {
-      const errorMessage = interactionError instanceof Error ? interactionError.message : 'Unknown error';
+      const errorMessage = interactionError instanceof Error ? interactionError.message : '發生未知錯誤';
       if (errorMessage.includes('time')) {
         const timeoutEmbed = new EmbedBuilder()
           .setColor('Orange')
@@ -533,9 +533,9 @@ export async function executePrefix(
     }
 
     if (error instanceof UserError) {
-      Logger.warn('Error in delete-server command (prefix):', error);
+      Logger.warn('delete-server 指令使用者錯誤（前綴）：', error);
     } else {
-      Logger.error('Error in delete-server command (prefix):', error);
+      Logger.error('delete-server 指令發生錯誤（前綴）：', error);
     }
     
     const errorMessage = error instanceof Error ? error.message : '刪除伺服器時發生錯誤。';
