@@ -98,10 +98,7 @@ export async function execute(
     let errorMessage = '建立帳號時發生錯誤，請稍後再試。';
 
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
-        title        = '🔗 尚未綁定帳號';
-        errorMessage = '您需要先使用 `/bind` 將 Discord 帳號與 Pterodactyl 帳號綁定，才能使用此指令。';
-      } else if (error.message.includes('administrator')) {
+      if (error.message.includes('administrator')) {
         title        = '🚫 權限不足';
         errorMessage = '此指令僅限管理員使用。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
@@ -152,8 +149,7 @@ export async function executePrefix(
       return;
     }
 
-    const [username, email, first_name, last_name, ...rest] = args;
-    const password = rest.join(' ');
+    const [username, email, first_name, last_name, password] = args;
 
     pterodactylService.setAdminApiKey();
 
@@ -193,10 +189,7 @@ export async function executePrefix(
     let errorMessage = '建立帳號時發生錯誤，請稍後再試。';
 
     if (error instanceof Error) {
-      if (error.message.includes('bind your account first')) {
-        title        = '🔗 尚未綁定帳號';
-        errorMessage = '您需要先使用 `!bind` 將 Discord 帳號與 Pterodactyl 帳號綁定，才能使用此指令。';
-      } else if (error.message.includes('administrator')) {
+      if (error.message.includes('administrator')) {
         title        = '🚫 權限不足';
         errorMessage = '此指令僅限管理員使用。';
       } else if (error.message.includes('Connection refused') || error.message.includes('ECONNREFUSED')) {
