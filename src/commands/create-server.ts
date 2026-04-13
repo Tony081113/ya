@@ -12,12 +12,19 @@ import { UserError } from '../types';
 
 export const data = new SlashCommandBuilder()
   .setName('create-server')
-  .setDescription('建立一台新的 Pterodactyl 伺服器（固定 Python 設定）')
+  .setDescription('建立一台新的 Pterodactyl 伺服器')
   .addStringOption(option =>
     option
       .setName('node')
       .setDescription('選擇要部署的節點')
       .setRequired(true)
+      .setAutocomplete(true)
+  )
+  .addStringOption(option =>
+    option
+      .setName('egg')
+      .setDescription('選擇伺服器類型（Egg）；若 .env 已設定 PTERO_EGG_ID 則此選項無效')
+      .setRequired(false)
       .setAutocomplete(true)
   )
   .addStringOption(option =>
@@ -46,36 +53,59 @@ export const data = new SlashCommandBuilder()
       .setRequired(false)
   );
 
-/** 自動完成：回傳節點清單供使用者選擇 */
+/** 自動完成：回傳節點或 Egg 清單供使用者選擇 */
 export async function autocomplete(
   interaction: AutocompleteInteraction,
   pterodactylService: PterodactylService
 ): Promise<void> {
   const focused = interaction.options.getFocused(true);
 
-  if (focused.name !== 'node') {
-    await interaction.respond([]);
+  pterodactylService.setAdminApiKey();
+
+  if (focused.name === 'node') {
+    try {
+      const nodes = await pterodactylService.getNodes();
+      const query = focused.value.toLowerCase();
+
+      const choices = nodes
+        .filter(node => node && node.id && node.name)
+        .filter(node => node.name.toLowerCase().includes(query))
+        .slice(0, 25)
+        .map(node => ({
+          name: `${node.name} (ID: ${node.id})`,
+          value: node.id.toString(),
+        }));
+
+      await interaction.respond(choices);
+    } catch {
+      await interaction.respond([]);
+    }
     return;
   }
 
-  try {
-    pterodactylService.setAdminApiKey();
-    const nodes = await pterodactylService.getNodes();
-    const query = focused.value.toLowerCase();
+  if (focused.name === 'egg') {
+    // 若 .env 已強制 Egg，仍回傳清單供參考，但 execute 會忽略使用者的選擇
+    try {
+      const eggs = await pterodactylService.getEggs();
+      const query = focused.value.toLowerCase();
 
-    const choices = nodes
-      .filter(node => node && node.id && node.name)
-      .filter(node => node.name.toLowerCase().includes(query))
-      .slice(0, 25)
-      .map(node => ({
-        name: `${node.name} (ID: ${node.id})`,
-        value: node.id.toString(),
-      }));
+      const choices = eggs
+        .filter((egg: any) => egg.name.toLowerCase().includes(query) || egg.nest_name?.toLowerCase().includes(query))
+        .slice(0, 25)
+        .map((egg: any) => ({
+          name: `${egg.name} [${egg.nest_name ?? ''}]`,
+          // value 格式：nestId:eggId，方便 execute 直接解析
+          value: `${egg.nest_id}:${egg.id}`,
+        }));
 
-    await interaction.respond(choices);
-  } catch {
-    await interaction.respond([]);
+      await interaction.respond(choices);
+    } catch {
+      await interaction.respond([]);
+    }
+    return;
   }
+
+  await interaction.respond([]);
 }
 
 export async function execute(
@@ -90,6 +120,7 @@ export async function execute(
     const context = await authService.requireAuth(interaction.user, interaction.member as any);
 
     const nodeIdStr   = interaction.options.getString('node', true);
+    const eggOption   = interaction.options.getString('egg');          // "nestId:eggId" or null
     const name        = interaction.options.getString('name', true);
     const description = interaction.options.getString('description') || '';
     const memory      = interaction.options.getInteger('memory', true);
@@ -107,8 +138,55 @@ export async function execute(
       return;
     }
 
-    // 取得節點名稱（用於顯示）
+    // 解析 Egg：.env 強制值優先，否則採用使用者選擇
     pterodactylService.setAdminApiKey();
+    const forcedEggId  = process.env.PTERO_EGG_ID  ? parseInt(process.env.PTERO_EGG_ID,  10) : undefined;
+    const forcedNestId = process.env.PTERO_NEST_ID ? parseInt(process.env.PTERO_NEST_ID, 10) : undefined;
+
+    let nestId: number | undefined;
+    let eggId: number | undefined;
+    let eggName = '（未知）';
+
+    if (forcedEggId) {
+      // .env 強制使用特定 Egg
+      eggId  = forcedEggId;
+      nestId = forcedNestId;
+      if (nestId) {
+        try {
+          const eggInfo = await pterodactylService.getEgg(nestId, eggId);
+          eggName = eggInfo.name ?? eggName;
+        } catch { /* 顯示名稱取得失敗不影響主流程 */ }
+      }
+    } else if (eggOption) {
+      // 使用者透過自動完成選擇了 Egg
+      const parts = eggOption.split(':');
+      nestId = parseInt(parts[0], 10);
+      eggId  = parseInt(parts[1], 10);
+      if (isNaN(nestId) || isNaN(eggId)) {
+        const embed = new EmbedBuilder()
+          .setColor('Red')
+          .setTitle('❌ 無效的 Egg')
+          .setDescription('請從自動完成清單中選擇有效的 Egg 類型。')
+          .setTimestamp();
+        await interaction.editReply({ embeds: [embed] });
+        return;
+      }
+      try {
+        const eggInfo = await pterodactylService.getEgg(nestId, eggId);
+        eggName = eggInfo.name ?? eggName;
+      } catch { /* 顯示名稱取得失敗不影響主流程 */ }
+    } else {
+      // 未強制且未選擇 → 提示使用者
+      const embed = new EmbedBuilder()
+        .setColor('Red')
+        .setTitle('❌ 未選擇 Egg')
+        .setDescription('請在 `egg` 選項中選擇一個伺服器類型，或請管理員在 `.env` 設定 `PTERO_EGG_ID` 以固定類型。')
+        .setTimestamp();
+      await interaction.editReply({ embeds: [embed] });
+      return;
+    }
+
+    // 取得節點名稱（用於顯示）
     let nodeName = `節點 ${nodeId}`;
     try {
       const nodes = await pterodactylService.getNodes();
@@ -129,12 +207,13 @@ export async function execute(
         { name: '磁碟', value: `${disk} MB`, inline: true },
         { name: 'CPU', value: `${cpu}%`, inline: true },
         { name: '節點', value: nodeName, inline: true },
+        { name: 'Egg', value: eggName, inline: true },
       )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [processingEmbed] });
 
-    // 建立伺服器（含自動取得 Allocation + 固定 Python 設定）
+    // 建立伺服器（含自動取得 Allocation）
     const server = await pterodactylService.createServer({
       name,
       description,
@@ -142,6 +221,8 @@ export async function execute(
       disk,
       cpu,
       nodeId,
+      nestId,
+      eggId,
       user: context.user.pterodactyl_user_id,
     });
 
@@ -159,15 +240,15 @@ export async function execute(
         { name: '💿 磁碟', value: `${server.limits.disk} MB`, inline: true },
         { name: '⚡ CPU', value: `${server.limits.cpu}%`, inline: true },
         { name: '🌍 節點', value: nodeName, inline: true },
-        { name: '🐍 類型', value: 'Python（固定設定）', inline: true },
+        { name: '🥚 Egg 類型', value: eggName, inline: true },
       )
-      .setFooter({ text: '伺服器安裝中，可能需要數分鐘。啟動指令已自動設定為 Python 環境。' })
+      .setFooter({ text: '伺服器安裝中，可能需要數分鐘。' })
       .setTimestamp();
 
     await interaction.editReply({ embeds: [successEmbed], components: [] });
 
     Logger.info(
-      `使用者 ${interaction.user.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}`
+      `使用者 ${interaction.user.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}，Egg：${eggName}`
     );
   } catch (error) {
     if (error instanceof UserError) {
@@ -224,23 +305,32 @@ export async function executePrefix(
     // 確認使用者已綁定帳號
     const context = await authService.requireAuth(message.author, message.member as any);
 
-    // 必填：<node_id> <name> <memory_mb> <disk_mb> <cpu_percent> [description]
-    if (args.length < 5) {
+    pterodactylService.setAdminApiKey();
+
+    // 判斷是否由 .env 強制指定 Egg
+    const forcedEggId  = process.env.PTERO_EGG_ID  ? parseInt(process.env.PTERO_EGG_ID,  10) : undefined;
+    const forcedNestId = process.env.PTERO_NEST_ID ? parseInt(process.env.PTERO_NEST_ID, 10) : undefined;
+    const isEggForced  = !!forcedEggId;
+
+    // 依是否強制 Egg 決定參數順序與最少參數數量
+    // 強制 Egg：!create-server <節點ID> <名稱> <記憶體MB> <磁碟MB> <CPU%> [描述]
+    // 自選 Egg：!create-server <節點ID> <EggID> <名稱> <記憶體MB> <磁碟MB> <CPU%> [描述]
+    const minArgs = isEggForced ? 5 : 6;
+    if (args.length < minArgs) {
+      const usageLine = isEggForced
+        ? '`!create-server <節點ID> <名稱> <記憶體MB> <磁碟MB> <CPU%> [描述]`'
+        : '`!create-server <節點ID> <EggID> <名稱> <記憶體MB> <磁碟MB> <CPU%> [描述]`';
+      const exampleLine = isEggForced
+        ? '`!create-server 1 MyBot 1024 5120 100 "我的 Bot"`'
+        : '`!create-server 1 15 MyBot 1024 5120 100 "我的 Bot"`';
+
       const embed = new EmbedBuilder()
         .setColor('Red')
         .setTitle('❌ 參數不足')
         .setDescription('缺少必填參數！')
         .addFields(
-          {
-            name: '用法',
-            value: '`!create-server <節點ID> <名稱> <記憶體MB> <磁碟MB> <CPU%> [描述]`',
-            inline: false,
-          },
-          {
-            name: '範例',
-            value: '`!create-server 1 MyBot 1024 5120 100 "我的 Python Bot"`',
-            inline: false,
-          },
+          { name: '用法', value: usageLine, inline: false },
+          { name: '範例', value: exampleLine, inline: false },
         )
         .setTimestamp();
 
@@ -248,12 +338,66 @@ export async function executePrefix(
       return;
     }
 
-    const nodeId      = parseInt(args[0], 10);
-    const name        = args[1];
-    const memory      = parseInt(args[2], 10);
-    const disk        = parseInt(args[3], 10);
-    const cpu         = parseInt(args[4], 10);
-    const description = args.slice(5).join(' ') || undefined;
+    let nodeId: number;
+    let resolvedNestId: number | undefined;
+    let resolvedEggId: number | undefined;
+    let name: string;
+    let memory: number;
+    let disk: number;
+    let cpu: number;
+    let description: string | undefined;
+    let eggName = '（未知）';
+
+    if (isEggForced) {
+      nodeId      = parseInt(args[0], 10);
+      name        = args[1];
+      memory      = parseInt(args[2], 10);
+      disk        = parseInt(args[3], 10);
+      cpu         = parseInt(args[4], 10);
+      description = args.slice(5).join(' ') || undefined;
+      resolvedEggId  = forcedEggId;
+      resolvedNestId = forcedNestId;
+      if (resolvedNestId) {
+        try {
+          const eggInfo = await pterodactylService.getEgg(resolvedNestId, resolvedEggId!);
+          eggName = eggInfo.name ?? eggName;
+        } catch { /* 顯示名稱取得失敗不影響主流程 */ }
+      }
+    } else {
+      nodeId      = parseInt(args[0], 10);
+      const userEggId = parseInt(args[1], 10);
+      name        = args[2];
+      memory      = parseInt(args[3], 10);
+      disk        = parseInt(args[4], 10);
+      cpu         = parseInt(args[5], 10);
+      description = args.slice(6).join(' ') || undefined;
+
+      if (isNaN(userEggId)) {
+        const embed = new EmbedBuilder()
+          .setColor('Red')
+          .setTitle('❌ 無效的 Egg ID')
+          .setDescription('EggID 必須為有效數字。請使用 `/create-server` 透過自動完成查詢可用的 Egg。')
+          .setTimestamp();
+        await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+        return;
+      }
+
+      // 在所有 Nest 中尋找該 Egg
+      const foundEgg = await pterodactylService.findEggById(userEggId);
+      if (!foundEgg) {
+        const embed = new EmbedBuilder()
+          .setColor('Red')
+          .setTitle('❌ 找不到 Egg')
+          .setDescription(`找不到 ID 為 **${userEggId}** 的 Egg。請使用 \`/create-server\` 的自動完成查看所有可用類型。`)
+          .setTimestamp();
+        await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+        return;
+      }
+
+      resolvedEggId  = foundEgg.id;
+      resolvedNestId = foundEgg.nest_id;
+      eggName        = foundEgg.name ?? eggName;
+    }
 
     if (isNaN(nodeId) || isNaN(memory) || isNaN(disk) || isNaN(cpu)) {
       const embed = new EmbedBuilder()
@@ -267,7 +411,6 @@ export async function executePrefix(
     }
 
     // 取得節點名稱（用於顯示）
-    pterodactylService.setAdminApiKey();
     let nodeName = `節點 ${nodeId}`;
     try {
       const nodes = await pterodactylService.getNodes();
@@ -296,6 +439,8 @@ export async function executePrefix(
       disk,
       cpu,
       nodeId,
+      nestId: resolvedNestId,
+      eggId:  resolvedEggId,
       user: context.user.pterodactyl_user_id,
     });
 
@@ -313,15 +458,15 @@ export async function executePrefix(
         { name: '💿 磁碟', value: `${server.limits.disk} MB`, inline: true },
         { name: '⚡ CPU', value: `${server.limits.cpu}%`, inline: true },
         { name: '🌍 節點', value: nodeName, inline: true },
-        { name: '🐍 類型', value: 'Python（固定設定）', inline: true },
+        { name: '🥚 Egg 類型', value: eggName, inline: true },
       )
-      .setFooter({ text: '伺服器安裝中，可能需要數分鐘。啟動指令已自動設定為 Python 環境。' })
+      .setFooter({ text: '伺服器安裝中，可能需要數分鐘。' })
       .setTimestamp();
 
     await processingMsg.edit({ embeds: [successEmbed], components: [] });
 
     Logger.info(
-      `使用者 ${message.author.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}`
+      `使用者 ${message.author.tag} 建立伺服器：${server.name} (${server.uuid})，節點：${nodeName}，Egg：${eggName}`
     );
   } catch (error) {
     if (error instanceof UserError) {
