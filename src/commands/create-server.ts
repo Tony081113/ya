@@ -21,13 +21,6 @@ export const data = new SlashCommandBuilder()
       .setAutocomplete(true)
   )
   .addStringOption(option =>
-    option
-      .setName('egg')
-      .setDescription('選擇伺服器類型（Egg）；若 .env 已設定 PTERO_EGG_ID 則此選項無效')
-      .setRequired(false)
-      .setAutocomplete(true)
-  )
-  .addStringOption(option =>
     option.setName('name')
       .setDescription('伺服器名稱')
       .setRequired(true)
@@ -46,6 +39,13 @@ export const data = new SlashCommandBuilder()
     option.setName('cpu')
       .setDescription('CPU 使用率上限（%，例如 100）')
       .setRequired(true)
+  )
+  .addStringOption(option =>
+    option
+      .setName('egg')
+      .setDescription('選擇伺服器類型（Egg）；若 .env 已設定 PTERO_EGG_ID 則此選項無效')
+      .setRequired(false)
+      .setAutocomplete(true)
   )
   .addStringOption(option =>
     option.setName('description')
